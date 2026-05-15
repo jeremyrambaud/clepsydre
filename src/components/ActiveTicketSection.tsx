@@ -1,0 +1,243 @@
+import { RotateCcw, Pause, Play, Square, Clock, ExternalLink } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useIssueStore, useSettingsStore } from "@/store";
+import { useTimer } from "@/hooks/useTimer";
+
+function formatHoursMinutes(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return `${h}h ${m.toString().padStart(2, "0")}m`;
+}
+
+interface ActiveTicketSectionProps {
+  timer: ReturnType<typeof useTimer>;
+  onStop?: () => void;
+}
+
+export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps) {
+  const selectedIssue = useIssueStore((s) => s.selectedIssue);
+  const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
+
+  if (!selectedIssue) {
+    return (
+      <div className="rounded-xl bg-surface-container border border-border p-12 text-center">
+        <p className="text-muted-foreground text-sm">
+          Select a ticket to start tracking time
+        </p>
+      </div>
+    );
+  }
+
+  const todayHours = timer.elapsedSeconds / 3600;
+  const totalSpent = (selectedIssue.spent_hours ?? 0) + todayHours;
+
+  const estimated = selectedIssue.estimated_hours ?? 0;
+  const isOver = estimated > 0 && totalSpent > estimated;
+  const estimatedPct = isOver ? (estimated / totalSpent) * 100 : (estimated > 0 ? Math.min((totalSpent / estimated) * 100, 100) : 0);
+  const overPct = isOver ? ((totalSpent - estimated) / totalSpent) * 100 : 0;
+
+  return (
+    <div className="rounded-xl bg-surface-container border-l-4 border-l-tertiary border border-border overflow-hidden">
+      <div className="grid grid-cols-12 gap-0">
+        {/* Ticket details (cols 1-4) */}
+        <div className="col-span-4 p-6 border-r border-border flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/15 text-primary">
+                {selectedIssue.status.name}
+              </span>
+              <span className="text-xs text-muted-foreground">#{selectedIssue.id}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 text-muted-foreground hover:text-foreground"
+                    onClick={() => openUrl(`${redmineUrl.replace(/\/+$/, "")}/issues/${selectedIssue.id}`)}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Ouvrir dans Redmine</TooltipContent>
+              </Tooltip>
+            </div>
+            <h3 className="text-xl font-semibold font-heading text-foreground leading-tight line-clamp-2 mb-1">
+              {selectedIssue.subject}
+            </h3>
+            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+              {selectedIssue.project.name}
+            </span>
+          </div>
+
+          {totalSpent > 0 && (
+            <div className="mt-4">
+              <div className="h-2 rounded-full bg-surface-highest overflow-hidden flex">
+                {estimated === 0 ? (
+                  <div
+                    className="h-full w-full rounded-full transition-all duration-500"
+                    style={{
+                      backgroundImage: `repeating-linear-gradient(
+                        -45deg,
+                        transparent,
+                        transparent 2px,
+                        var(--destructive) 2px,
+                        var(--destructive) 4px
+                      )`,
+                      backgroundColor: "rgba(255,180,171,0.25)",
+                    }}
+                  />
+                ) : isOver ? (
+                  <>
+                    <div
+                      className="h-full bg-destructive/50 transition-all duration-500"
+                      style={{ width: `${estimatedPct}%` }}
+                    />
+                    <div
+                      className="h-full rounded-r-full transition-all duration-500"
+                      style={{
+                        width: `${overPct}%`,
+                        backgroundImage: `repeating-linear-gradient(
+                          -45deg,
+                          transparent,
+                          transparent 2px,
+                          var(--destructive) 2px,
+                          var(--destructive) 4px
+                        )`,
+                        backgroundColor: "rgba(255,180,171,0.25)",
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div
+                    className="h-full bg-tertiary rounded-full transition-all duration-500"
+                    style={{ width: `${estimatedPct}%` }}
+                  />
+                )}
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className={`text-xs ${estimated === 0 || isOver ? "text-destructive" : "text-muted-foreground"}`}>
+                  {formatHoursMinutes(totalSpent)} spent
+                  {isOver && ` (+${formatHoursMinutes(totalSpent - estimated)})`}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {estimated > 0 ? `${formatHoursMinutes(estimated)} est` : "No estimate"}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Timer display (cols 5-9) */}
+        <div className="col-span-5 p-6 flex flex-col items-center justify-center">
+          {timer.startTime && (
+            <div className="flex items-center gap-1.5 mb-3">
+              <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
+                Début
+              </span>
+              <Input
+                type="time"
+                value={`${timer.startTime.getHours().toString().padStart(2, "0")}:${timer.startTime.getMinutes().toString().padStart(2, "0")}`}
+                onChange={(e) => {
+                  const [h, m] = e.target.value.split(":").map(Number);
+                  if (isNaN(h) || isNaN(m)) return;
+                  const newStart = new Date(timer.startTime!);
+                  newStart.setHours(h, m, 0, 0);
+                  if (newStart.getTime() <= Date.now()) {
+                    timer.setStartTime(newStart);
+                  }
+                }}
+                className="h-7 w-[5.5rem] text-center text-sm font-heading tabular-nums bg-surface-highest border-border px-2"
+              />
+            </div>
+          )}
+
+          <div className="flex items-baseline tabular-nums select-none mb-6">
+            <span className="text-7xl font-semibold font-heading text-foreground tracking-tight">
+              {timer.hours}
+            </span>
+            <span className="text-5xl font-semibold text-muted-foreground/40 mx-1">:</span>
+            <span className="text-7xl font-semibold font-heading text-foreground tracking-tight">
+              {timer.minutes}
+            </span>
+            <span className="text-5xl font-semibold text-muted-foreground/40 mx-1">:</span>
+            <span className="text-7xl font-semibold font-heading text-tertiary tracking-tight">
+              {timer.seconds}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Button
+              variant="secondary"
+              size="icon"
+              className="w-14 h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
+              onClick={timer.reset}
+            >
+              <RotateCcw className="w-5 h-5" />
+            </Button>
+
+            <Button
+              size="icon"
+              className={`w-20 h-20 rounded-full ${
+                timer.isRunning && !timer.isPaused
+                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                  : "bg-tertiary hover:bg-tertiary/90 text-on-tertiary"
+              }`}
+              onClick={() => {
+                if (!timer.isRunning) {
+                  timer.start();
+                } else if (timer.isPaused) {
+                  timer.resume();
+                } else {
+                  timer.pause();
+                }
+              }}
+            >
+              {timer.isRunning && !timer.isPaused ? (
+                <Pause className="w-8 h-8" />
+              ) : (
+                <Play className="w-8 h-8 ml-1" />
+              )}
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="icon"
+              className="w-14 h-14 rounded-full bg-error-bg/80 hover:bg-error-bg text-error-text"
+              onClick={onStop ?? timer.stop}
+              disabled={!timer.isRunning && !timer.isPaused}
+            >
+              <Square className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Totals panel (cols 10-12) */}
+        <div className="col-span-3 bg-surface-low p-6 flex flex-col justify-center gap-4 border-l border-border">
+          <div>
+            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
+              Redmine Total
+            </span>
+            <p className="text-2xl font-semibold font-heading text-foreground tabular-nums mt-1">
+              {formatHoursMinutes(totalSpent)}
+            </p>
+          </div>
+
+          <div className="border-t border-border" />
+
+          <div>
+            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
+              Today&apos;s Session
+            </span>
+            <p className="text-2xl font-semibold font-heading text-tertiary tabular-nums mt-1">
+              {formatHoursMinutes(todayHours)}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

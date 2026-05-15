@@ -15,6 +15,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_keyring::init())
+        .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             keyring::set_api_credentials,
             keyring::get_api_credentials,

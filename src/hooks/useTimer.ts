@@ -9,6 +9,7 @@ export interface TimerReturn {
   seconds: string;
   startTime: Date | null;
   setStartTime: (date: Date) => void;
+  subtractElapsed: (seconds: number) => void;
   start: () => void;
   pause: () => void;
   resume: () => void;
@@ -100,6 +101,21 @@ export function useTimer(): TimerReturn {
     [isRunning, isPaused]
   );
 
+  const subtractElapsed = useCallback((seconds: number) => {
+    const delta = Math.max(0, Math.floor(seconds));
+    if (delta === 0) return;
+
+    setElapsedSeconds((previousElapsed) => {
+      const nextElapsed = Math.max(0, previousElapsed - delta);
+      setPausedElapsed(nextElapsed);
+      setStartTimeState((currentStartTime) => {
+        if (!currentStartTime) return currentStartTime;
+        return new Date(Date.now() - nextElapsed * 1000);
+      });
+      return nextElapsed;
+    });
+  }, []);
+
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
@@ -117,6 +133,7 @@ export function useTimer(): TimerReturn {
     seconds: pad(totalS),
     startTime,
     setStartTime,
+    subtractElapsed,
     start,
     pause,
     resume,

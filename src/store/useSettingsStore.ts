@@ -25,6 +25,7 @@ const defaultSettings: UserSettings = {
   default_activity_id: null,
   default_comment: "",
   express_entry: false,
+  idle_detection_enabled: true,
   launch_at_startup: false,
   minimize_to_tray: false,
   check_interval_minutes: 5,

@@ -178,6 +178,19 @@ export function SettingsView() {
 
           {/* Idle Detection */}
           <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+              <div>
+                <p className="text-sm font-medium text-foreground">Idle Detection</p>
+                <p className="text-xs text-muted-foreground">Prompt when activity resumes after long idle time</p>
+              </div>
+              <Switch
+                checked={draft.idle_detection_enabled}
+                onCheckedChange={(checked) =>
+                  setDraft({ ...draft, idle_detection_enabled: checked })
+                }
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
               Idle Detection Threshold
             </label>
@@ -189,6 +202,7 @@ export function SettingsView() {
                 step={1}
                 onValueChange={([v]) => setDraft({ ...draft, idle_threshold_minutes: v })}
                 className="flex-1"
+                disabled={!draft.idle_detection_enabled}
               />
               <span className="text-sm font-semibold text-primary tabular-nums min-w-[50px] text-right">
                 {draft.idle_threshold_minutes} min

@@ -75,7 +75,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
         </span>
         {/* Connector line to next row */}
         {!isLast && (
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-0.5 w-px h-3 bg-surface-high translate-y-full" />
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-0.5 w-px h-3 bg-surface-high translate-y-full" />
         )}
       </div>
 

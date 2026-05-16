@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { RotateCcw, Pause, Play, Square, Clock, ExternalLink } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIssueStore, useSettingsStore } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
+import { fetchIssueTodayLoggedHours } from "@/lib/redmine";
 
 function formatHoursMinutes(hours: number): string {
   const h = Math.floor(hours);
@@ -20,6 +22,30 @@ interface ActiveTicketSectionProps {
 export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps) {
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
+  const [todayLoggedHours, setTodayLoggedHours] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (!selectedIssue) {
+      setTodayLoggedHours(0);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    fetchIssueTodayLoggedHours(selectedIssue.id)
+      .then((hours) => {
+        if (mounted) setTodayLoggedHours(hours);
+      })
+      .catch(() => {
+        if (mounted) setTodayLoggedHours(0);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedIssue]);
 
   if (!selectedIssue) {
     return (
@@ -32,6 +58,7 @@ export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps)
   }
 
   const todayHours = timer.elapsedSeconds / 3600;
+  const todayTotalHours = todayLoggedHours + todayHours;
   const totalSpent = (selectedIssue.spent_hours ?? 0) + todayHours;
 
   const estimated = selectedIssue.estimated_hours ?? 0;
@@ -230,10 +257,10 @@ export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps)
 
           <div>
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
-              Today&apos;s Session
+              Today&apos;s Total
             </span>
             <p className="text-2xl font-semibold font-heading text-tertiary tabular-nums mt-1">
-              {formatHoursMinutes(todayHours)}
+              {formatHoursMinutes(todayTotalHours)}
             </p>
           </div>
         </div>

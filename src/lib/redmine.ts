@@ -178,6 +178,45 @@ export async function fetchActivities(): Promise<RedmineActivity[]> {
   return data.time_entry_activities;
 }
 
+export async function fetchIssueTodayLoggedHours(issueId: number): Promise<number> {
+  const { url, apiKey } = await getCredentials();
+  const today = new Date().toISOString().split("T")[0];
+  const pageSize = 100;
+  let offset = 0;
+  let total = 0;
+  let totalCount = 0;
+
+  do {
+    const params = new URLSearchParams({
+      user_id: "me",
+      issue_id: String(issueId),
+      spent_on: today,
+      limit: String(pageSize),
+      offset: String(offset),
+    });
+
+    const resp = await fetch(`${url}/time_entries.json?${params}`, {
+      headers: { "X-Redmine-API-Key": apiKey },
+      danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch today's time entries (${resp.status})`);
+    }
+
+    const data = (await resp.json()) as {
+      time_entries: RedmineTimeEntry[];
+      total_count: number;
+    };
+
+    total += data.time_entries.reduce((sum, entry) => sum + (entry.hours ?? 0), 0);
+    totalCount = data.total_count ?? data.time_entries.length;
+    offset += pageSize;
+  } while (offset < totalCount);
+
+  return total;
+}
+
 export interface FetchTimeEntriesResult {
   sessions: WorkSession[];
   totalCount: number;

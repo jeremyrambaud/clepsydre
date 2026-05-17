@@ -9,6 +9,8 @@
     "sql:default",
     "keyring:default",
     "autostart:default",
+    "updater:default",
+    "process:allow-restart",
     {
       "identifier": "http:default",
       "allow": [

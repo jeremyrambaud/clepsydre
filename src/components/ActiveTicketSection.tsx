@@ -177,7 +177,7 @@ export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps)
                     timer.setStartTime(newStart);
                   }
                 }}
-                className="h-7 w-[5.5rem] text-center text-sm font-heading tabular-nums bg-surface-highest border-border px-2"
+                className="h-7 w-22 text-center text-sm font-heading tabular-nums bg-surface-highest border-border px-2"
               />
             </div>
           )}

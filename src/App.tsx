@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { enable as enableAutostart, disable as disableAutostart } from "@tauri-apps/plugin-autostart";
 import { Toaster } from "@/components/ui/sonner";
@@ -6,8 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TimerView } from "@/components/TimerView";
 import { SettingsView } from "@/components/SettingsView";
+import { UpdateDialog } from "@/components/UpdateDialog";
 import { useTimer } from "@/hooks/useTimer";
-import { useSettingsStore } from "@/store";
+import { useSettingsStore, useUpdaterStore } from "@/store";
 
 type View = "timer" | "analytics" | "history" | "settings";
 
@@ -67,6 +68,15 @@ function App() {
     void syncAutostart();
   }, [launchAtStartup, settingsLoaded]);
 
+  const checkForUpdates = useUpdaterStore((s) => s.checkForUpdates);
+  const updateCheckedRef = useRef(false);
+
+  useEffect(() => {
+    if (!settingsLoaded || updateCheckedRef.current) return;
+    updateCheckedRef.current = true;
+    void checkForUpdates();
+  }, [settingsLoaded, checkForUpdates]);
+
   useEffect(() => {
     if (!settingsLoaded) return;
     if (!redmineUrl || !apiKey) return;
@@ -111,6 +121,7 @@ function App() {
           </div>
         )}
       </AppLayout>
+      <UpdateDialog />
       <Toaster position="bottom-right" theme="dark" />
     </TooltipProvider>
   );

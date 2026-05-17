@@ -1,7 +1,8 @@
+mod bridge_server;
 mod commands;
 mod migrations;
 
-use commands::{idle, keyring};
+use commands::{idle, integration, keyring};
 use std::sync::{Arc, Mutex};
 use tauri::{
     menu::MenuBuilder,
@@ -119,11 +120,13 @@ pub fn run() {
     let idle_monitor_state = Arc::new(Mutex::new(idle::IdleMonitorConfig::default()));
     let minimize_to_tray_state = Arc::new(Mutex::new(true));
     let pending_update_state: Arc<Mutex<Option<Update>>> = Arc::new(Mutex::new(None));
+    let timer_state = integration::default_timer_state();
 
     tauri::Builder::default()
         .manage(idle_monitor_state.clone())
         .manage(minimize_to_tray_state.clone())
         .manage(pending_update_state.clone())
+        .manage(timer_state.clone())
         .on_window_event({
             let minimize_to_tray_state = minimize_to_tray_state.clone();
             move |window, event| {
@@ -141,6 +144,7 @@ pub fn run() {
         })
         .setup(move |app| {
             idle::spawn_idle_monitor(app.handle().clone(), idle_monitor_state.clone());
+            bridge_server::spawn_bridge_server(app.handle().clone(), timer_state.clone());
 
             let tray_menu = MenuBuilder::new(app)
                 .text("show", "Show Clepsydre")
@@ -202,6 +206,11 @@ pub fn run() {
             keyring::delete_api_key,
             idle::get_idle_seconds,
             idle::set_idle_monitor_config,
+            integration::show_main_window,
+            integration::update_timer_state,
+            integration::get_timer_state,
+            integration::integration_request,
+            integration::integration_respond,
             set_tray_timer_label,
             set_minimize_to_tray,
             check_for_updates,

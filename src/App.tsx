@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { enable as enableAutostart, disable as disableAutostart } from "@tauri-apps/plugin-autostart";
 import { Toaster } from "@/components/ui/sonner";
@@ -7,8 +7,10 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { TimerView } from "@/components/TimerView";
 import { SettingsView } from "@/components/SettingsView";
 import { UpdateDialog } from "@/components/UpdateDialog";
+import { SwitchTimerDialog } from "@/components/SwitchTimerDialog";
 import { useTimer } from "@/hooks/useTimer";
-import { useSettingsStore, useUpdaterStore } from "@/store";
+import { useIntegrationBridge } from "@/hooks/useIntegrationBridge";
+import { useSettingsStore, useUpdaterStore, useIssueStore } from "@/store";
 
 type View = "timer" | "analytics" | "history" | "settings";
 
@@ -27,7 +29,9 @@ function formatClockTimer(seconds: number): string {
 
 function App() {
   const [currentView, setCurrentView] = useState<View>("timer");
+  const [pendingSwitchIssueId, setPendingSwitchIssueId] = useState<number | null>(null);
   const timer = useTimer();
+  const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const minimizeToTray = useSettingsStore((s) => s.settings.minimize_to_tray);
   const launchAtStartup = useSettingsStore((s) => s.settings.launch_at_startup);
   const checkIntervalMinutes = useSettingsStore((s) => s.settings.check_interval_minutes);
@@ -101,10 +105,32 @@ function App() {
     syncActivities,
   ]);
 
+  const handleSwitchRequest = useCallback((issueId: number) => {
+    setPendingSwitchIssueId(issueId);
+    setCurrentView("timer");
+  }, []);
+
+  const [externalStopRequested, setExternalStopRequested] = useState(false);
+
+  const handleStopRequest = useCallback(() => {
+    setExternalStopRequested(true);
+    setCurrentView("timer");
+  }, []);
+
+  useIntegrationBridge({ timer, onSwitchRequest: handleSwitchRequest, onStopRequest: handleStopRequest });
+
   return (
     <TooltipProvider>
       <AppLayout currentView={currentView} onNavigate={setCurrentView} timer={timer}>
-        {currentView === "timer" && <TimerView timer={timer} />}
+        {currentView === "timer" && (
+          <TimerView
+            timer={timer}
+            pendingSwitchIssueId={pendingSwitchIssueId}
+            onPendingSwitchHandled={() => setPendingSwitchIssueId(null)}
+            externalStopRequested={externalStopRequested}
+            onExternalStopHandled={() => setExternalStopRequested(false)}
+          />
+        )}
         {currentView === "settings" && <SettingsView />}
         {currentView === "analytics" && (
           <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -117,6 +143,13 @@ function App() {
           </div>
         )}
       </AppLayout>
+      <SwitchTimerDialog
+        open={pendingSwitchIssueId !== null && currentView !== "timer"}
+        pendingIssueId={pendingSwitchIssueId}
+        currentIssue={selectedIssue}
+        onConfirm={() => setCurrentView("timer")}
+        onCancel={() => setPendingSwitchIssueId(null)}
+      />
       <UpdateDialog />
       <Toaster position="bottom-right" theme="dark" />
     </TooltipProvider>

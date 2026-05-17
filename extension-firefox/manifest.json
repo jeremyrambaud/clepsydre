@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "Clepsydre - Redmine Timer",
+  "version": "1.0.0",
+  "description": "Start and stop Clepsydre timers directly from Redmine issue pages.",
+  "permissions": ["nativeMessaging", "*://*/*/issues/*"],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*/*/issues/*", "*://*/issues/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "applications": {
+    "gecko": {
+      "id": "clepsydre@clepsydre.app",
+      "strict_min_version": "109.0"
+    }
+  }
+}

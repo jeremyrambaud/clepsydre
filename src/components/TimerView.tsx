@@ -17,12 +17,16 @@ import {
 } from "@/components/ui/dialog";
 import { useTimer } from "@/hooks/useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
-import { logTimeEntry } from "@/lib/redmine";
+import { logTimeEntry, fetchIssue } from "@/lib/redmine";
 import { toast } from "sonner";
 import type { WorkSession } from "@/types";
 
 interface TimerViewProps {
   timer: ReturnType<typeof useTimer>;
+  pendingSwitchIssueId?: number | null;
+  onPendingSwitchHandled?: () => void;
+  externalStopRequested?: boolean;
+  onExternalStopHandled?: () => void;
 }
 
 function formatTimeDisplay(seconds: number): string {
@@ -44,7 +48,7 @@ function formatIdleDuration(seconds: number): string {
   return `${minutes}m ${remainingSeconds.toString().padStart(2, "0")}s`;
 }
 
-export function TimerView({ timer }: TimerViewProps) {
+export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled, externalStopRequested, onExternalStopHandled }: TimerViewProps) {
   const { setSelectedIssue, addSession, selectedIssue } = useIssueStore();
   const settings = useSettingsStore((s) => s.settings);
   const loadSessions = useIssueStore((s) => s.loadSessions);
@@ -63,12 +67,15 @@ export function TimerView({ timer }: TimerViewProps) {
   const idleDecisionAnchorMsRef = useRef<number | null>(null);
   const idleResumeAtMsRef = useRef<number | null>(null);
   const keepRunningAfterCreateSaveRef = useRef(false);
+  const pendingSwitchIssueIdRef = useRef<number | null>(null);
+  const [stoppedIssue, setStoppedIssue] = useState(selectedIssue);
 
   function handleSelectFromSession(session: WorkSession) {
     setSelectedIssue(session.issue);
   }
 
   function buildSession(
+    issue: typeof selectedIssue,
     hours: number,
     activityId: number,
     comments: string,
@@ -79,7 +86,7 @@ export function TimerView({ timer }: TimerViewProps) {
   ): WorkSession {
     return {
       id: crypto.randomUUID(),
-      issue: selectedIssue!,
+      issue: issue!,
       hours,
       activityId,
       comments,
@@ -98,6 +105,8 @@ export function TimerView({ timer }: TimerViewProps) {
       return;
     }
 
+    setStoppedIssue(selectedIssue);
+
     const stoppedAt = new Date();
     const startedAt = timer.startTime ?? new Date(stoppedAt.getTime() - seconds * 1000);
 
@@ -115,6 +124,7 @@ export function TimerView({ timer }: TimerViewProps) {
         });
         addSession(
           buildSession(
+            selectedIssue,
             hours,
             settings.default_activity_id ?? 0,
             settings.default_comment,
@@ -147,6 +157,37 @@ export function TimerView({ timer }: TimerViewProps) {
     keepRunningAfterCreateSaveRef.current = false;
     await finalizeStopFlow();
   }, [finalizeStopFlow]);
+
+  useEffect(() => {
+    if (pendingSwitchIssueId == null) return;
+    const issueId = pendingSwitchIssueId;
+    pendingSwitchIssueIdRef.current = null;
+    onPendingSwitchHandled?.();
+
+    const doSwitch = async () => {
+      if (timer.isRunning && selectedIssue) {
+        await finalizeStopFlow(undefined, { keepRunningAfterCreateSave: false });
+      }
+      try {
+        const issue = await fetchIssue(issueId);
+        setSelectedIssue(issue);
+        timer.start();
+      } catch (err) {
+        toast.error("Failed to start new ticket", {
+          description: err instanceof Error ? err.message : String(err),
+        });
+      }
+    };
+    void doSwitch();
+  }, [pendingSwitchIssueId]);
+
+  useEffect(() => {
+    if (!externalStopRequested) return;
+    onExternalStopHandled?.();
+    if (timer.isRunning && selectedIssue) {
+      void finalizeStopFlow();
+    }
+  }, [externalStopRequested]);
 
   const bringAppToFront = useCallback(async () => {
     try {
@@ -271,8 +312,9 @@ export function TimerView({ timer }: TimerViewProps) {
   );
 
   function handleCreateSaved(entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
-    if (selectedIssue) {
+    if (stoppedIssue) {
       const session = buildSession(
+        stoppedIssue,
         hours,
         activityId,
         comments,
@@ -286,11 +328,14 @@ export function TimerView({ timer }: TimerViewProps) {
       addSession(session);
     }
     setCreateModalOpen(false);
+
     if (keepRunningAfterCreateSaveRef.current) {
       keepRunningAfterCreateSaveRef.current = false;
       return;
     }
-    timer.reset();
+    if (!timer.isRunning) {
+      timer.reset();
+    }
   }
 
   function handleEditSession(session: WorkSession) {
@@ -326,16 +371,19 @@ export function TimerView({ timer }: TimerViewProps) {
         />
       </div>
 
-      {selectedIssue && (
+      {stoppedIssue && (
         <TimeEntryModal
           mode="create"
           open={createModalOpen}
           onClose={() => {
             keepRunningAfterCreateSaveRef.current = false;
             setCreateModalOpen(false);
+            if (!timer.isRunning) {
+              timer.reset();
+            }
           }}
           onSaved={handleCreateSaved}
-          issue={selectedIssue}
+          issue={stoppedIssue}
           elapsedSeconds={stoppedSeconds}
           startedAt={formatHHMM(stoppedStartTime ?? new Date())}
           stoppedAt={formatHHMM(stoppedAtTime ?? new Date())}

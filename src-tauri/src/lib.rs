@@ -152,7 +152,12 @@ pub fn run() {
                 .quit()
                 .build()?;
 
-            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
+            let tray_icon_bytes: &[u8] = if cfg!(target_os = "windows") {
+                include_bytes!("../icons/tray-windows.png")
+            } else {
+                include_bytes!("../icons/tray.png")
+            };
+            let tray_icon = tauri::image::Image::from_bytes(tray_icon_bytes)?;
 
             TrayIconBuilder::with_id("main-tray")
                 .icon(tray_icon)

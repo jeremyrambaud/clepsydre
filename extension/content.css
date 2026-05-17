@@ -28,6 +28,11 @@
   text-overflow: ellipsis;
 }
 
+.clepsydre-info--error {
+  color: #b91c1c;
+  font-weight: 500;
+}
+
 .clepsydre-issue-link {
   display: inline-flex;
   align-items: center;

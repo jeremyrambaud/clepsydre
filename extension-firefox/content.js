@@ -61,9 +61,6 @@
   const issueId = extractIssueId();
   if (!issueId) return;
 
-  const subjectHeading = document.querySelector("div.subject h3");
-  if (!subjectHeading) return;
-
   let widget = null;
   let btn = null;
   let infoSpan = null;
@@ -74,8 +71,23 @@
   let lastSyncSeconds = 0;
   let lastSyncTime = 0;
 
+  function resolveSubjectHeading() {
+    const selectors = [
+      "div.subject h3",
+      ".issue .subject h3",
+      "#content .subject h3",
+    ];
+    for (const selector of selectors) {
+      const element = document.querySelector(selector);
+      if (element) return element;
+    }
+    return null;
+  }
+
   function injectWidget() {
     if (widgetInjected) return;
+    const subjectHeading = resolveSubjectHeading();
+    if (!subjectHeading) return;
     widgetInjected = true;
 
     widget = document.createElement("span");
@@ -112,6 +124,23 @@
     statusDot = null;
   }
 
+  function setUnavailableState() {
+    injectWidget();
+    stopLocalTicker();
+    if (!btn || !statusDot || !infoSpan) return;
+
+    btn.disabled = true;
+    btn.className = "clepsydre-btn clepsydre-btn--start";
+    btn.title = "Clepsydre app unavailable";
+    btn.innerHTML = svgPlay();
+
+    statusDot.className = "clepsydre-status clepsydre-status--disconnected";
+    statusDot.title = "Clepsydre app not running or not installed";
+
+    infoSpan.className = "clepsydre-info clepsydre-info--error";
+    infoSpan.textContent = "Launch Clepsydre desktop app to start tracking time";
+  }
+
   function startLocalTicker() {
     stopLocalTicker();
     localTickerId = setInterval(() => {
@@ -135,6 +164,10 @@
     try {
       const response = await sendBridgeMessage({ action: "getTimerState" });
       currentState = response.state || response;
+      if (currentState?.ok === false) {
+        setUnavailableState();
+        return;
+      }
 
       if (!isMatchingRedmine(currentState.redmineUrl)) {
         removeWidget();
@@ -148,12 +181,13 @@
 
       updateUI();
     } catch {
-      removeWidget();
+      setUnavailableState();
     }
   }
 
   function updateUI() {
     if (!currentState || !btn || !statusDot || !infoSpan) return;
+    btn.disabled = false;
 
     const isThisIssueActive =
       currentState.issueId === issueId &&
@@ -229,8 +263,9 @@
       await refreshState();
     } catch (err) {
       console.error("[Clepsydre]", err);
+      setUnavailableState();
     } finally {
-      if (btn) btn.disabled = false;
+      if (btn && btn.title !== "Clepsydre app unavailable") btn.disabled = false;
     }
   }
 

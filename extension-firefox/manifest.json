@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
-  "name": "Clepsydre - Redmine Timer",
+  "name": "Clepsydre companion - Redmine Timer",
   "version": "1.0.0",
-  "description": "Start and stop Clepsydre timers directly from Redmine issue pages.",
+  "description": "Start and stop Clepsydre app timers directly from Redmine issue pages.",
   "permissions": ["nativeMessaging", "*://*/*/issues/*"],
   "background": {
     "scripts": ["background.js"],

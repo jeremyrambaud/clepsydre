@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   release:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -20,11 +21,11 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: latest
+          node-version: 24.10.0
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.1.38
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

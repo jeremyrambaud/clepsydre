@@ -1,6 +1,6 @@
 [package]
 name = "clepsydre"
-version = "1.0.0-beta.5"
+version = "1.0.0-beta.6"
 description = "Redmine time tracking desktop application"
 authors = ["you"]
 edition = "2021"

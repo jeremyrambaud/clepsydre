@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 
 export function UpdateDialog() {
-  const { status, availableVersion, releaseNotes, downloadProgress, error } =
+  const { status, availableVersion, releaseNotes, error } =
     useUpdaterStore();
   const downloadAndInstall = useUpdaterStore((s) => s.downloadAndInstall);
   const restartApp = useUpdaterStore((s) => s.restartApp);
@@ -53,16 +53,9 @@ export function UpdateDialog() {
         )}
 
         {status === "downloading" && (
-          <div className="space-y-2">
-            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${downloadProgress}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground text-center tabular-nums">
-              {downloadProgress}%
-            </p>
+          <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            Downloading and installing update...
           </div>
         )}
 

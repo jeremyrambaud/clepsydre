@@ -24,4 +24,5 @@ tauri-plugin-http = { version = "2", features = ["dangerous-settings"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+url = "2"
 

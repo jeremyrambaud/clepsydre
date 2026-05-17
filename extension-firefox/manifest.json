@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Clepsydre companion — Redmine Timer",
-  "version": "1.0.0-beta.13",
+  "version": "1.0.0.13",
   "description": "Start and stop Clepsydre app timers directly from Redmine issue pages.",
   "permissions": [
     "nativeMessaging",
@@ -38,5 +38,6 @@
         ]
       }
     }
-  }
+  },
+  "version_name": "1.0.0-beta.13"
 }

@@ -148,12 +148,10 @@ pub fn run() {
                 .quit()
                 .build()?;
 
-            let default_icon = app
-                .default_window_icon()
-                .ok_or_else(|| tauri::Error::AssetNotFound("default window icon".into()))?;
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
 
             TrayIconBuilder::with_id("main-tray")
-                .icon(default_icon.clone())
+                .icon(tray_icon)
                 .title("")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, Eye, EyeOff, RefreshCw, Zap, MessageSquare, MonitorCog, Timer } from "lucide-react";
+import { getVersion } from "@tauri-apps/api/app";
+import { Link, Eye, EyeOff, RefreshCw, Zap, MessageSquare, MonitorCog, Timer, Download, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -12,15 +13,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSettingsStore } from "@/store";
+import { useSettingsStore, useUpdaterStore } from "@/store";
 
 export function SettingsView() {
   const { settings, activities, syncActivities, isSyncing, lastSyncedAt } =
     useSettingsStore();
   const [now, setNow] = useState(Date.now());
+  const [appVersion, setAppVersion] = useState<string>("");
 
   const [showApiKey, setShowApiKey] = useState(false);
   const [draft, setDraft] = useState(settings);
+
+  const { status, availableVersion, error } = useUpdaterStore();
+  const checkForUpdates = useUpdaterStore((s) => s.checkForUpdates);
+  const downloadAndInstall = useUpdaterStore((s) => s.downloadAndInstall);
+  const restartApp = useUpdaterStore((s) => s.restartApp);
+
+  useEffect(() => {
+    void getVersion().then(setAppVersion);
+  }, []);
 
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(settings);
 
@@ -272,6 +283,87 @@ export function SettingsView() {
 
         </section>
       </div>
+
+      {/* About & Updates */}
+      <section className="rounded-xl bg-card border border-border p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Download className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold font-heading text-foreground">
+            About & Updates
+          </h3>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm text-foreground">
+              Clepsydre{" "}
+              <span className="font-mono text-muted-foreground">v{appVersion || "..."}</span>
+            </p>
+
+            {status === "checking" && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Checking for updates...
+              </p>
+            )}
+            {status === "up-to-date" && (
+              <p className="text-xs text-emerald-500 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3" />
+                You're up to date
+              </p>
+            )}
+            {status === "available" && (
+              <p className="text-xs text-primary flex items-center gap-1.5">
+                <Download className="w-3 h-3" />
+                Version {availableVersion} is available
+              </p>
+            )}
+            {status === "downloading" && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Downloading and installing...
+              </p>
+            )}
+            {status === "ready" && (
+              <p className="text-xs text-emerald-500 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3" />
+                Update installed — restart to apply
+              </p>
+            )}
+            {status === "error" && (
+              <p className="text-xs text-destructive flex items-center gap-1.5">
+                <AlertCircle className="w-3 h-3" />
+                {error || "Failed to check for updates"}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {(status === "idle" || status === "up-to-date" || status === "error") && (
+              <Button
+                variant="secondary"
+                onClick={checkForUpdates}
+                className="gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Check for Updates
+              </Button>
+            )}
+            {status === "available" && (
+              <Button onClick={downloadAndInstall} className="gap-2">
+                <Download className="w-4 h-4" />
+                Download & Install
+              </Button>
+            )}
+            {status === "ready" && (
+              <Button onClick={restartApp} className="gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Restart Now
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Footer Actions */}
       <div className="flex justify-end gap-3 pt-2">

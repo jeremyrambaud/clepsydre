@@ -29,5 +29,7 @@ async function updateCargoTomlVersion(path) {
 await updateJsonVersion("package.json");
 await updateJsonVersion("src-tauri/tauri.conf.json");
 await updateCargoTomlVersion("src-tauri/Cargo.toml");
+await updateJsonVersion("extension/manifest.json");
+await updateJsonVersion("extension-firefox/manifest.json");
 
 console.log(`Updated project version to ${nextVersion}`);

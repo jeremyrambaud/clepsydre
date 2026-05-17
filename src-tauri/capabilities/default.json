@@ -8,6 +8,7 @@
     "opener:default",
     "sql:default",
     "keyring:default",
+    "autostart:default",
     {
       "identifier": "http:default",
       "allow": [

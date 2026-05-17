@@ -148,10 +148,8 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
             </div>
           );
         })}
-      </div>
-
       {hasMore && (
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-4 mb-4">
           <Button
             variant="outline"
             size="sm"
@@ -168,6 +166,7 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
           </Button>
         </div>
       )}
+      </div>
     </section>
   );
 }

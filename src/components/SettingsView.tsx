@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Eye, EyeOff, RefreshCw, Zap, MessageSquare, MonitorCog, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { useSettingsStore } from "@/store";
 export function SettingsView() {
   const { settings, activities, syncActivities, isSyncing, lastSyncedAt } =
     useSettingsStore();
+  const [now, setNow] = useState(Date.now());
 
   const [showApiKey, setShowApiKey] = useState(false);
   const [draft, setDraft] = useState(settings);
@@ -34,8 +35,15 @@ export function SettingsView() {
   }
 
   const syncAgo = lastSyncedAt
-    ? `${Math.round((Date.now() - lastSyncedAt.getTime()) / 60000)} minutes ago`
+    ? `${Math.round((now - lastSyncedAt.getTime()) / 60000)} minutes ago`
     : "Never";
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -81,6 +89,30 @@ export function SettingsView() {
                 {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+          </div>
+        </div>
+
+        <div className="mb-6 space-y-2">
+          <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
+            Auto Sync Interval
+          </label>
+          <div className="flex items-center gap-3">
+            <Input
+              type="number"
+              min={1}
+              max={120}
+              value={draft.check_interval_minutes}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                if (Number.isNaN(value)) return;
+                setDraft({
+                  ...draft,
+                  check_interval_minutes: Math.min(120, Math.max(1, value)),
+                });
+              }}
+              className="bg-background border-border w-24"
+            />
+            <span className="text-xs text-muted-foreground">minutes</span>
           </div>
         </div>
 
@@ -237,6 +269,7 @@ export function SettingsView() {
               Minimize to tray
             </label>
           </div>
+
         </section>
       </div>
 

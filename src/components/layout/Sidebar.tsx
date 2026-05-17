@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Clock, LayoutDashboard, History, Settings, Pause, Square, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -89,18 +90,41 @@ function MiniTimerWidget({ timer, issue }: { timer: ReturnType<typeof useTimer>;
 }
 
 function SyncStatusBar() {
-  const { syncActivities, isSyncing, lastSyncedAt } = useSettingsStore();
+  const { syncActivities, isSyncing, lastSyncedAt, settings } = useSettingsStore();
+  const [now, setNow] = useState(Date.now());
 
-  const syncLabel = lastSyncedAt
-    ? `Synced ${Math.round((Date.now() - lastSyncedAt.getTime()) / 60000)}m ago`
-    : "Not synced";
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 30_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const ageMinutes = lastSyncedAt
+    ? Math.round((now - lastSyncedAt.getTime()) / 60000)
+    : null;
+  const isOutOfSync = ageMinutes === null || ageMinutes > settings.check_interval_minutes;
+  const lastSyncLabel = lastSyncedAt
+    ? lastSyncedAt.toLocaleString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "never";
+  const syncLabel = isOutOfSync
+    ? `Unsynced • Last sync: ${lastSyncLabel}`
+    : `Synced ${ageMinutes}m ago`;
 
   return (
     <div className="px-5 py-4 border-t border-border">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${lastSyncedAt ? "bg-tertiary" : "bg-muted-foreground"}`} />
-          <span className="text-xs text-muted-foreground">{syncLabel}</span>
+          <div className={`w-2 h-2 rounded-full ${isOutOfSync ? "bg-destructive" : "bg-tertiary"}`} />
+          <span className={`text-xs ${isOutOfSync ? "text-destructive" : "text-muted-foreground"}`}>
+            {syncLabel}
+          </span>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>

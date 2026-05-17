@@ -32,6 +32,7 @@ function App() {
   const minimizeToTray = useSettingsStore((s) => s.settings.minimize_to_tray);
   const launchAtStartup = useSettingsStore((s) => s.settings.launch_at_startup);
   const checkIntervalMinutes = useSettingsStore((s) => s.settings.check_interval_minutes);
+  const updateChannel = useSettingsStore((s) => s.settings.update_channel);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const apiKey = useSettingsStore((s) => s.settings.api_key);
   const syncActivities = useSettingsStore((s) => s.syncActivities);
@@ -74,8 +75,8 @@ function App() {
   useEffect(() => {
     if (!settingsLoaded || updateCheckedRef.current) return;
     updateCheckedRef.current = true;
-    void checkForUpdates();
-  }, [settingsLoaded, checkForUpdates]);
+    void checkForUpdates(updateChannel);
+  }, [settingsLoaded, checkForUpdates, updateChannel]);
 
   useEffect(() => {
     if (!settingsLoaded) return;

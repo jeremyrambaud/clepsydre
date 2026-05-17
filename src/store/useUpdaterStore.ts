@@ -1,6 +1,8 @@
 import { create } from "zustand";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import { invoke } from "@tauri-apps/api/core";
 import { relaunch } from "@tauri-apps/plugin-process";
+
+export type UpdateChannel = "stable" | "beta";
 
 type UpdateStatus =
   | "idle"
@@ -17,43 +19,54 @@ interface UpdaterState {
   releaseNotes: string | null;
   downloadProgress: number;
   error: string | null;
-  pendingUpdate: Update | null;
+  hasPendingUpdate: boolean;
 
-  checkForUpdates: () => Promise<void>;
+  channel: UpdateChannel;
+  checkForUpdates: (channel?: UpdateChannel) => Promise<void>;
   downloadAndInstall: () => Promise<void>;
   restartApp: () => Promise<void>;
   dismiss: () => void;
 }
 
+interface UpdateMetadata {
+  version: string;
+  notes?: string | null;
+}
+
 export const useUpdaterStore = create<UpdaterState>((set, get) => ({
   status: "idle",
+  channel: "stable",
   availableVersion: null,
   releaseNotes: null,
   downloadProgress: 0,
   error: null,
-  pendingUpdate: null,
+  hasPendingUpdate: false,
 
-  checkForUpdates: async () => {
+  checkForUpdates: async (channel) => {
     if (get().status === "checking" || get().status === "downloading") return;
+    const requestedChannel = channel ?? get().channel;
 
     set({
       status: "checking",
+      channel: requestedChannel,
       error: null,
       availableVersion: null,
       releaseNotes: null,
       downloadProgress: 0,
-      pendingUpdate: null,
+      hasPendingUpdate: false,
     });
 
     try {
-      const update = await check();
+      const update = await invoke<UpdateMetadata | null>("check_for_updates", {
+        channel: requestedChannel,
+      });
 
       if (update) {
         set({
           status: "available",
           availableVersion: update.version,
-          releaseNotes: update.body ?? null,
-          pendingUpdate: update,
+          releaseNotes: update.notes ?? null,
+          hasPendingUpdate: true,
         });
       } else {
         set({ status: "up-to-date" });
@@ -67,33 +80,14 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
   },
 
   downloadAndInstall: async () => {
-    const { pendingUpdate } = get();
-    if (!pendingUpdate) return;
+    const { hasPendingUpdate } = get();
+    if (!hasPendingUpdate) return;
 
     set({ status: "downloading", downloadProgress: 0, error: null });
 
     try {
-      let contentLength = 0;
-      let downloaded = 0;
-
-      await pendingUpdate.downloadAndInstall((event) => {
-        switch (event.event) {
-          case "Started":
-            contentLength = event.data.contentLength ?? 0;
-            break;
-          case "Progress":
-            downloaded += event.data.chunkLength;
-            if (contentLength > 0) {
-              set({ downloadProgress: Math.round((downloaded / contentLength) * 100) });
-            }
-            break;
-          case "Finished":
-            set({ downloadProgress: 100 });
-            break;
-        }
-      });
-
-      set({ status: "ready" });
+      await invoke("install_pending_update");
+      set({ status: "ready", downloadProgress: 100, hasPendingUpdate: false });
     } catch (e) {
       set({
         status: "error",
@@ -113,7 +107,7 @@ export const useUpdaterStore = create<UpdaterState>((set, get) => ({
       availableVersion: null,
       releaseNotes: null,
       downloadProgress: 0,
-      pendingUpdate: null,
+      hasPendingUpdate: false,
     });
   },
 }));

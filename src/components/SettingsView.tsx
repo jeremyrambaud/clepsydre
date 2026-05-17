@@ -299,6 +299,23 @@ export function SettingsView() {
               Clepsydre{" "}
               <span className="font-mono text-muted-foreground">v{appVersion || "..."}</span>
             </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Update channel:</span>
+              <Select
+                value={draft.update_channel}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, update_channel: value as "stable" | "beta" })
+                }
+              >
+                <SelectTrigger className="h-7 w-[130px] bg-muted border-border text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="stable">Stable</SelectItem>
+                  <SelectItem value="beta">Beta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {status === "checking" && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
@@ -342,7 +359,7 @@ export function SettingsView() {
             {(status === "idle" || status === "up-to-date" || status === "error") && (
               <Button
                 variant="secondary"
-                onClick={checkForUpdates}
+                onClick={() => checkForUpdates(draft.update_channel)}
                 className="gap-2"
               >
                 <RefreshCw className="w-4 h-4" />

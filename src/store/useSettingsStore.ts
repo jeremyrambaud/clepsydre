@@ -28,6 +28,7 @@ const defaultSettings: UserSettings = {
   idle_detection_enabled: true,
   launch_at_startup: true,
   minimize_to_tray: true,
+  update_channel: "stable",
   check_interval_minutes: 5,
   idle_threshold_minutes: 15,
   theme: "dark",

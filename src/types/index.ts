@@ -61,6 +61,7 @@ export interface UserSettings {
   idle_detection_enabled: boolean;
   launch_at_startup: boolean;
   minimize_to_tray: boolean;
+  update_channel: "stable" | "beta";
   check_interval_minutes: number;
   idle_threshold_minutes: number;
   theme: "light" | "dark" | "system";

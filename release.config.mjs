@@ -17,7 +17,14 @@ export default {
     [
       "@semantic-release/git",
       {
-        assets: ["package.json", "bun.lockb", "src-tauri/Cargo.toml", "src-tauri/tauri.conf.json"],
+        assets: [
+          "package.json",
+          "bun.lockb",
+          "src-tauri/Cargo.toml",
+          "src-tauri/tauri.conf.json",
+          "extension/manifest.json",
+          "extension-firefox/manifest.json",
+        ],
         message: "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}",
       },
     ],

@@ -1,9 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Clepsydre companion — Redmine Timer",
-  "version": "1.0.0",
+  "version": "1.0.0-beta.12",
   "description": "Start and stop Clepsydre timers directly from Redmine issue pages.",
-  "permissions": ["nativeMessaging"],
+  "permissions": [
+    "nativeMessaging"
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -14,9 +16,16 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*/*/issues/*", "*://*/issues/*"],
-      "js": ["content.js"],
-      "css": ["content.css"],
+      "matches": [
+        "*://*/*/issues/*",
+        "*://*/issues/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ],

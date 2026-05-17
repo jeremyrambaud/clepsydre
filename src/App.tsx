@@ -28,7 +28,6 @@ function formatClockTimer(seconds: number): string {
 function App() {
   const [currentView, setCurrentView] = useState<View>("timer");
   const timer = useTimer();
-  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const minimizeToTray = useSettingsStore((s) => s.settings.minimize_to_tray);
   const launchAtStartup = useSettingsStore((s) => s.settings.launch_at_startup);
   const checkIntervalMinutes = useSettingsStore((s) => s.settings.check_interval_minutes);
@@ -39,10 +38,6 @@ function App() {
   const isSyncing = useSettingsStore((s) => s.isSyncing);
   const lastSyncedAt = useSettingsStore((s) => s.lastSyncedAt);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
-
-  useEffect(() => {
-    loadCredentials();
-  }, [loadCredentials]);
 
   useEffect(() => {
     const label = timer.isRunning ? formatClockTimer(timer.elapsedSeconds) : null;

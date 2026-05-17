@@ -36,6 +36,13 @@ export function SettingsView() {
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(settings);
 
   const saveSettings = useSettingsStore((s) => s.saveSettings);
+  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
+
+  useEffect(() => {
+    void loadCredentials().then(() => {
+      setDraft(useSettingsStore.getState().settings);
+    });
+  }, [loadCredentials]);
 
   function handleSave() {
     saveSettings(draft);

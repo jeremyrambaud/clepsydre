@@ -1,6 +1,7 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { invoke } from "@tauri-apps/api/core";
 import type { RedmineIssue, RedmineActivity, RedmineTimeEntry, WorkSession } from "@/types";
+import { useSettingsStore } from "@/store";
 
 interface RedmineIssuesResponse {
   issues: RedmineIssue[];
@@ -11,13 +12,20 @@ interface RedmineSingleIssueResponse {
 }
 
 async function getCredentials(): Promise<{ url: string; apiKey: string }> {
-  const [url, apiKey] = await invoke<[string, string]>("get_api_credentials");
+  const { redmine_url, api_key } = useSettingsStore.getState().settings;
+  let apiKey = api_key;
+  if (!apiKey) {
+    apiKey = await invoke<string>("get_api_key");
+    if (apiKey) {
+      useSettingsStore.getState().setSettings({ api_key: apiKey });
+    }
+  }
 
-  if (!url || !apiKey) {
+  if (!redmine_url || !apiKey) {
     throw new Error("Redmine credentials not configured. Go to Settings to set them up.");
   }
 
-  return { url: url.replace(/\/+$/, ""), apiKey };
+  return { url: redmine_url.replace(/\/+$/, ""), apiKey };
 }
 
 export async function searchIssues(query: string): Promise<RedmineIssue[]> {

@@ -197,9 +197,9 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
-            keyring::set_api_credentials,
-            keyring::get_api_credentials,
-            keyring::delete_api_credentials,
+            keyring::set_api_key,
+            keyring::get_api_key,
+            keyring::delete_api_key,
             idle::get_idle_seconds,
             idle::set_idle_monitor_config,
             set_tray_timer_label,

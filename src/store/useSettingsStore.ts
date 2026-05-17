@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { invoke } from "@tauri-apps/api/core";
 import type { UserSettings, RedmineActivity } from "@/types";
 import { fetchActivities } from "@/lib/redmine";
@@ -34,69 +35,95 @@ const defaultSettings: UserSettings = {
   theme: "dark",
 };
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
-  settings: { ...defaultSettings },
-  activities: [],
-  isSyncing: false,
-  lastSyncedAt: null,
-  loaded: false,
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set, get) => ({
+      settings: { ...defaultSettings },
+      activities: [],
+      isSyncing: false,
+      lastSyncedAt: null,
+      loaded: true,
 
-  setSettings: (partial) =>
-    set((state) => ({
-      settings: { ...state.settings, ...partial },
-    })),
+      setSettings: (partial) =>
+        set((state) => ({
+          settings: { ...state.settings, ...partial },
+        })),
 
-  saveSettings: async (partial) => {
-    const newSettings = { ...get().settings, ...partial };
-    set({ settings: newSettings });
+      saveSettings: async (partial) => {
+        const newSettings = { ...get().settings, ...partial };
+        set({ settings: newSettings });
 
-    try {
-      await invoke("set_api_credentials", {
-        url: newSettings.redmine_url,
-        apiKey: newSettings.api_key,
-      });
-    } catch (e) {
-      console.error("Failed to save credentials to keyring:", e);
-    }
-  },
+        try {
+          if (newSettings.api_key?.trim()) {
+            await invoke("set_api_key", { apiKey: newSettings.api_key });
+          } else {
+            await invoke("delete_api_key");
+          }
+        } catch (e) {
+          console.error("Failed to save API key to keyring:", e);
+        }
+      },
 
-  loadCredentials: async () => {
-    try {
-      const [url, apiKey] = await invoke<[string, string]>("get_api_credentials");
-      set((state) => ({
+      loadCredentials: async () => {
+        try {
+          const apiKey = await invoke<string>("get_api_key");
+          set((state) => ({
+            settings: {
+              ...state.settings,
+              api_key: apiKey || "",
+            },
+          }));
+        } catch {
+          // noop: keep existing in-memory settings if keyring cannot be accessed
+        }
+      },
+
+      resetSettings: () => set({ settings: { ...defaultSettings } }),
+
+      setActivities: (activities) => set({ activities }),
+
+      syncActivities: async () => {
+        set({ isSyncing: true });
+        try {
+          const [activities] = await Promise.all([
+            fetchActivities(),
+            useIssueStore.getState().loadSessions(),
+          ]);
+          set({
+            activities,
+            isSyncing: false,
+            lastSyncedAt: new Date(),
+          });
+        } catch {
+          set({
+            activities: mockActivities,
+            isSyncing: false,
+          });
+        }
+      },
+    }),
+    {
+      name: "clepsydre-settings",
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
         settings: {
           ...state.settings,
-          redmine_url: url || "",
-          api_key: apiKey || "",
+          api_key: "",
         },
-        loaded: true,
-      }));
-    } catch {
-      set({ loaded: true });
+      }),
+      merge: (persisted, current) => {
+        const persistedState = persisted as Partial<SettingsState>;
+        return {
+          ...current,
+          ...persistedState,
+          settings: {
+            ...defaultSettings,
+            ...current.settings,
+            ...(persistedState.settings ?? {}),
+            api_key: "",
+          },
+        };
+      },
     }
-  },
-
-  resetSettings: () => set({ settings: { ...defaultSettings } }),
-
-  setActivities: (activities) => set({ activities }),
-
-  syncActivities: async () => {
-    set({ isSyncing: true });
-    try {
-      const [activities] = await Promise.all([
-        fetchActivities(),
-        useIssueStore.getState().loadSessions(),
-      ]);
-      set({
-        activities,
-        isSyncing: false,
-        lastSyncedAt: new Date(),
-      });
-    } catch {
-      set({
-        activities: mockActivities,
-        isSyncing: false,
-      });
-    }
-  },
-}));
+  )
+);

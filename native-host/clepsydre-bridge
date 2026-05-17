@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /usr/local/bin/node "$(dirname "$0")/clepsydre-bridge.cjs" "$@" 2>/dev/null || exec /opt/homebrew/bin/node "$(dirname "$0")/clepsydre-bridge.cjs" "$@" 2>/dev/null || exec node "$(dirname "$0")/clepsydre-bridge.cjs" "$@"

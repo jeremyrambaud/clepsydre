@@ -59,10 +59,31 @@ jobs:
           prerelease: ${{ contains(github.ref_name, '-') }}
           args: ${{ matrix.platform == 'windows-latest' && contains(github.ref_name, '-') && '--bundles nsis' || matrix.args }}
 
+  package-extensions:
+    name: Package browser extensions
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Package extension bundles
+        env:
+          EXT_VERSION: ${{ github.ref_name }}
+        run: bash ./scripts/package-extensions.sh
+
+      - name: Upload extension bundles to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            dist/extensions/*.zip \
+            --repo "${{ github.repository }}" \
+            --clobber
+
   publish-beta-pointer:
     name: Publish latest-beta pointer
     if: contains(github.ref_name, '-beta.')
-    needs: build
+    needs: [build, package-extensions]
     runs-on: ubuntu-latest
     steps:
       - name: Download release updater manifest
@@ -86,7 +107,7 @@ jobs:
   publish-stable-pointer:
     name: Publish latest-stable pointer
     if: ${{ !contains(github.ref_name, '-') }}
-    needs: build
+    needs: [build, package-extensions]
     runs-on: ubuntu-latest
     steps:
       - name: Download release updater manifest

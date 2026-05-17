@@ -234,7 +234,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="bg-card border-border sm:max-w-md">
+      <DialogContent showCloseButton={false} className="bg-card border-border sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading">
             <Clock className="w-5 h-5 text-primary" />
@@ -399,7 +399,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} disabled={isSaving || isDeleting}>
-              Cancel
+              { isEdit ? "Cancel" : "Discard time"}
             </Button>
             <Button
               onClick={handleSubmit}

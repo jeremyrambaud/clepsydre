@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import type { RedmineIssue } from "@/types";
 
@@ -24,28 +25,31 @@ export function SwitchTimerDialog({
   onConfirm,
   onCancel,
 }: SwitchTimerDialogProps) {
+  const { t } = useTranslation();
+
   if (!currentIssue || pendingIssueId === null) return null;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
       <DialogContent className="bg-card border-border sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Timer already running</DialogTitle>
+          <DialogTitle>{t("switchTimer.title")}</DialogTitle>
           <DialogDescription>
-            A timer is currently running on ticket{" "}
-            <strong>#{currentIssue.id}</strong> — {currentIssue.subject}.
+            {t("switchTimer.description", {
+              currentIssueId: currentIssue.id,
+              currentSubject: currentIssue.subject,
+            })}
             <br />
             <br />
-            Do you want to stop it and start tracking{" "}
-            <strong>#{pendingIssueId}</strong>?
+            {t("switchTimer.question", { pendingIssueId })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:flex-row gap-2">
           <Button variant="secondary" onClick={onCancel} className="flex-1">
-            Cancel
+            {t("switchTimer.cancel")}
           </Button>
           <Button onClick={onConfirm} className="flex-1">
-            Stop current & switch
+            {t("switchTimer.confirm")}
           </Button>
         </DialogFooter>
       </DialogContent>

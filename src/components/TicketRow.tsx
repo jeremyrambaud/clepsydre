@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Play, Pencil, ExternalLink } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,7 @@ function formatHoursMinutes(hours: number): string {
 }
 
 export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast = false }: TicketRowProps) {
+  const { t } = useTranslation();
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const { issue } = session;
   const estimated = issue.estimated_hours ?? 0;
@@ -103,7 +105,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
           {/* Session duration: cols 6-7 */}
           <div className="col-span-2 lg:col-span-2 text-left lg:text-center">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-heading mr-2 lg:hidden">
-              Temps passé:
+              {t("ticketRow.sessionSpent")}
             </span>
             <span className="text-sm font-semibold text-tertiary tabular-nums">
               {formatHoursMinutes(session.hours)}
@@ -114,7 +116,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
           <div className="min-w-0 lg:col-span-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-heading">
-                {estimated === 0 ? "Spent:" : isOver ? "Over:" : "Left:"}
+                {estimated === 0 ? t("ticketRow.spent") : isOver ? t("ticketRow.over") : t("ticketRow.left")}
               </span>
               <span
                 className={`text-sm font-semibold tabular-nums ${
@@ -126,7 +128,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-muted-foreground">
-                {estimated > 0 ? `Est: ${formatHoursMinutes(estimated)}` : "No est."}
+                {estimated > 0 ? t("ticketRow.estimate", { value: formatHoursMinutes(estimated) }) : t("ticketRow.noEstimateShort")}
               </span>
               <div className="flex-1 h-1 rounded-full bg-surface-highest overflow-hidden flex">
                 {estimated === 0 ? (
@@ -188,7 +190,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
                     <Pencil className="w-4 h-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Edit entry</TooltipContent>
+                <TooltipContent>{t("ticketRow.editEntry")}</TooltipContent>
               </Tooltip>
             )}
 
@@ -203,7 +205,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Open in Redmine</TooltipContent>
+              <TooltipContent>{t("ticketRow.openInRedmine")}</TooltipContent>
             </Tooltip>
 
             <Tooltip>
@@ -216,7 +218,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
                   <Play className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Start timer</TooltipContent>
+              <TooltipContent>{t("ticketRow.startTimer")}</TooltipContent>
             </Tooltip>
           </div>
         </div>

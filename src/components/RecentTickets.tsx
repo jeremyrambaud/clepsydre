@@ -1,4 +1,5 @@
 import { useIssueStore } from "@/store";
+import { useTranslation } from "react-i18next";
 import { TicketRow } from "./TicketRow";
 import { Loader2, RotateCw, Clock, Hash, Timer, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,15 +10,15 @@ interface RecentTicketsProps {
   onEditSession: (session: WorkSession) => void;
 }
 
-function formatDayLabel(dateStr: string): string {
+function formatDayLabel(dateStr: string, locale: string, t: (key: string) => string): string {
   const today = new Date().toISOString().split("T")[0];
   const yesterday = new Date(Date.now() - 86_400_000).toISOString().split("T")[0];
 
-  if (dateStr === today) return "Aujourd'hui";
-  if (dateStr === yesterday) return "Hier";
+  if (dateStr === today) return t("recent.today");
+  if (dateStr === yesterday) return t("recent.yesterday");
 
   const date = new Date(dateStr + "T00:00:00");
-  return date.toLocaleDateString("fr-FR", {
+  return date.toLocaleDateString(locale, {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -25,6 +26,8 @@ function formatDayLabel(dateStr: string): string {
 }
 
 export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsProps) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
   const recentSessions = useIssueStore((s) => s.recentSessions);
   const isLoadingSessions = useIssueStore((s) => s.isLoadingSessions);
   const isLoadingMore = useIssueStore((s) => s.isLoadingMore);
@@ -41,11 +44,11 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
     return (
       <section>
         <h4 className="text-[10px] font-medium tracking-[0.15em] text-muted-foreground uppercase mb-3 font-heading">
-          Timeline
+          {t("recent.timeline")}
         </h4>
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Chargement depuis Redmine…
+          {t("recent.loading")}
         </div>
       </section>
     );
@@ -90,7 +93,7 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
   return (
     <section className="flex flex-col lg:min-h-0 lg:h-full">
       <h4 className="text-[10px] font-medium tracking-[0.15em] text-muted-foreground uppercase mb-3 font-heading shrink-0">
-        Timeline
+        {t("recent.timeline")}
       </h4>
       <div className="relative lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
         {sorted.map((session, index) => {
@@ -113,7 +116,7 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
                 <div className={`${index > 0 ? "mt-6" : ""} mb-2`}>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-surface-highest/50 px-3 sm:px-4 py-2.5 text-[11px] text-muted-foreground">
                     <span className="text-xs font-bold tracking-wide text-foreground uppercase font-heading whitespace-nowrap mr-auto">
-                      {formatDayLabel(session.spentOn)}
+                      {formatDayLabel(session.spentOn, locale, t)}
                     </span>
                     {stat && (
                       <>
@@ -123,15 +126,15 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
                         </span>
                         <span className="flex items-center gap-1.5">
                           <FolderOpen className="w-3.5 h-3.5" />
-                          {stat.uniqueProjects.size} projet{stat.uniqueProjects.size > 1 ? "s" : ""}
+                          {t("recent.projectsCount", { count: stat.uniqueProjects.size })}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Hash className="w-3.5 h-3.5" />
-                          {stat.uniqueIssues.size} ticket{stat.uniqueIssues.size > 1 ? "s" : ""}
+                          {t("recent.ticketsCount", { count: stat.uniqueIssues.size })}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <Timer className="w-3.5 h-3.5" />
-                          {stat.entries} entrée{stat.entries > 1 ? "s" : ""}
+                          {t("recent.entriesCount", { count: stat.entries })}
                         </span>
                       </>
                     )}
@@ -162,7 +165,7 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
             ) : (
               <RotateCw className="h-4 w-4" />
             )}
-            {isLoadingMore ? "Chargement…" : "Charger plus"}
+            {isLoadingMore ? t("recent.loadingMore") : t("recent.loadMore")}
           </Button>
         </div>
       )}

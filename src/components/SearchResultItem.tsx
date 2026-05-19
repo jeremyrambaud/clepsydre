@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Clock3 } from "lucide-react";
 import type { RedmineIssue } from "@/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -55,6 +56,7 @@ function TruncatedIssueSubject({ subject }: { subject: string }) {
 }
 
 export function SearchResultItem({ id, issue, isActive = false, showProgress = true, onSelect, onManualEntry, onHover }: SearchResultItemProps) {
+  const { t } = useTranslation();
   const rowRef = useRef<HTMLDivElement>(null);
   const [isCompact, setIsCompact] = useState(false);
 
@@ -149,7 +151,7 @@ export function SearchResultItem({ id, issue, isActive = false, showProgress = t
             )}
           </div>
           <span className={`text-xs tabular-nums whitespace-nowrap ${estimated === 0 || isOver ? "text-destructive" : "text-muted-foreground"}`}>
-            {formatHoursMinutes(spent)} / {estimated > 0 ? formatHoursMinutes(estimated) : "No est."}
+            {formatHoursMinutes(spent)} / {estimated > 0 ? formatHoursMinutes(estimated) : t("searchResult.noEstimateShort")}
           </span>
         </div>
       )}
@@ -168,7 +170,7 @@ export function SearchResultItem({ id, issue, isActive = false, showProgress = t
               <Clock3 className="w-4 h-4" />
             </button>
           </TooltipTrigger>
-          <TooltipContent>Saisie manuelle</TooltipContent>
+          <TooltipContent>{t("searchResult.manualEntry")}</TooltipContent>
         </Tooltip>
       )}
     </div>

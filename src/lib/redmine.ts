@@ -1,6 +1,7 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { invoke } from "@tauri-apps/api/core";
 import type { RedmineIssue, RedmineActivity, RedmineTimeEntry, WorkSession } from "@/types";
+import i18n from "@/i18n";
 import { useSettingsStore } from "@/store";
 
 interface RedmineIssuesResponse {
@@ -38,7 +39,7 @@ async function fetchIssuesBySubject(url: string, apiKey: string, subjectQuery: s
 
   if (!resp.ok) {
     const body = await resp.text();
-    throw new Error(`Redmine API error (${resp.status}): ${body}`);
+    throw new Error(i18n.t("redmine.apiError", { status: resp.status, body }));
   }
 
   const data = (await resp.json()) as RedmineIssuesResponse;
@@ -82,7 +83,7 @@ async function getCredentials(): Promise<{ url: string; apiKey: string }> {
   }
 
   if (!redmine_url || !apiKey) {
-    throw new Error("Redmine credentials not configured. Go to Settings to set them up.");
+    throw new Error(i18n.t("redmine.credentialsMissing"));
   }
 
   return { url: redmine_url.replace(/\/+$/, ""), apiKey };
@@ -169,7 +170,7 @@ export async function fetchIssue(issueId: number): Promise<RedmineIssue> {
   });
 
   if (!resp.ok) {
-    throw new Error(`Failed to fetch issue #${issueId} (${resp.status})`);
+    throw new Error(i18n.t("redmine.fetchIssueFailed", { issueId, status: resp.status }));
   }
 
   const data = (await resp.json()) as RedmineSingleIssueResponse;
@@ -207,7 +208,7 @@ export async function logTimeEntry(params: LogTimeParams): Promise<number> {
 
   if (!resp.ok) {
     const body = await resp.text();
-    throw new Error(`Failed to log time (${resp.status}): ${body}`);
+    throw new Error(i18n.t("redmine.logTimeFailed", { status: resp.status, body }));
   }
 
   const data = (await resp.json()) as { time_entry: { id: number } };
@@ -240,7 +241,7 @@ export async function updateTimeEntry(
 
   if (!resp.ok) {
     const body = await resp.text();
-    throw new Error(`Failed to update time entry (${resp.status}): ${body}`);
+    throw new Error(i18n.t("redmine.updateTimeFailed", { status: resp.status, body }));
   }
 }
 
@@ -255,7 +256,7 @@ export async function deleteTimeEntry(entryId: number): Promise<void> {
 
   if (!resp.ok) {
     const body = await resp.text();
-    throw new Error(`Failed to delete time entry (${resp.status}): ${body}`);
+    throw new Error(i18n.t("redmine.deleteTimeFailed", { status: resp.status, body }));
   }
 }
 
@@ -268,7 +269,7 @@ export async function fetchActivities(): Promise<RedmineActivity[]> {
   });
 
   if (!resp.ok) {
-    throw new Error(`Failed to fetch activities (${resp.status})`);
+    throw new Error(i18n.t("redmine.fetchActivitiesFailed", { status: resp.status }));
   }
 
   const data = (await resp.json()) as { time_entry_activities: RedmineActivity[] };
@@ -298,7 +299,7 @@ export async function fetchIssueTodayLoggedHours(issueId: number): Promise<numbe
     });
 
     if (!resp.ok) {
-      throw new Error(`Failed to fetch today's time entries (${resp.status})`);
+      throw new Error(i18n.t("redmine.fetchTodayEntriesFailed", { status: resp.status }));
     }
 
     const data = (await resp.json()) as {
@@ -338,7 +339,7 @@ export async function fetchRecentTimeEntries(
   });
 
   if (!resp.ok) {
-    throw new Error(`Failed to fetch time entries (${resp.status})`);
+    throw new Error(i18n.t("redmine.fetchEntriesFailed", { status: resp.status }));
   }
 
   const data = (await resp.json()) as {

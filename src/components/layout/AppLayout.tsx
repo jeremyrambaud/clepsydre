@@ -1,4 +1,5 @@
 import { Sidebar } from "./Sidebar";
+import { useTranslation } from "react-i18next";
 import type { useTimer } from "@/hooks/useTimer";
 
 type View = "timer" | "analytics" | "history" | "settings";
@@ -10,14 +11,16 @@ interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-const viewTitles: Record<View, string> = {
-  timer: "",
-  analytics: "Analytics",
-  history: "History",
-  settings: "Settings",
-};
-
 export function AppLayout({ currentView, onNavigate, timer, children }: AppLayoutProps) {
+  const { t } = useTranslation();
+
+  const viewTitles: Record<View, string> = {
+    timer: "",
+    analytics: t("layout.analytics"),
+    history: t("layout.history"),
+    settings: t("layout.settings"),
+  };
+
   const title = viewTitles[currentView];
 
   return (

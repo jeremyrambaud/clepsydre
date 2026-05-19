@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Loader2, AlertCircle } from "lucide-react";
 import { useIssueStore } from "@/store";
 import { searchIssues } from "@/lib/redmine";
@@ -12,6 +13,7 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ onManualEntry }: SearchBarProps) {
+  const { t } = useTranslation();
   const { searchQuery, setSearchQuery, setSelectedIssue } = useIssueStore();
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<RedmineIssue[]>([]);
@@ -163,7 +165,7 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
         )}
         <input
           type="text"
-          placeholder="Search tickets by ID, project, or title..."
+          placeholder={t("search.placeholder")}
           autoCorrect="off"
           value={searchQuery}
           onChange={(e) => handleQueryChange(e.target.value)}
@@ -191,7 +193,7 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
           {isLoading && results.length === 0 && (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Searching Redmine...
+              {t("search.searching")}
             </div>
           )}
 
@@ -204,7 +206,7 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
 
           {!isLoading && !error && results.length === 0 && searchQuery.trim().length > 0 && (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              No tickets found for "{searchQuery}"
+              {t("search.noResults", { query: searchQuery })}
             </div>
           )}
 

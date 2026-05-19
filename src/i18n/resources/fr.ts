@@ -207,6 +207,8 @@ const fr = {
     genericError: "Une erreur inattendue est survenue lors de la vérification des mises à jour.",
     downloadingInline: "Téléchargement et installation de la mise à jour...",
     later: "Plus tard",
+    remindOnNextLaunch: "Me le rappeler au prochain lancement",
+    ignoreThisVersion: "Ignorer cette version",
     downloadInstall: "Télécharger et installer",
     installing: "Installation...",
     restartNow: "Redémarrer maintenant",

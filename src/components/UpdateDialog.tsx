@@ -17,6 +17,8 @@ export function UpdateDialog() {
     useUpdaterStore();
   const downloadAndInstall = useUpdaterStore((s) => s.downloadAndInstall);
   const restartApp = useUpdaterStore((s) => s.restartApp);
+  const remindOnNextLaunch = useUpdaterStore((s) => s.remindOnNextLaunch);
+  const ignoreCurrentVersion = useUpdaterStore((s) => s.ignoreCurrentVersion);
   const dismiss = useUpdaterStore((s) => s.dismiss);
 
   const isOpen =
@@ -61,8 +63,11 @@ export function UpdateDialog() {
         <DialogFooter>
           {status === "available" && (
             <>
-              <Button variant="outline" onClick={dismiss}>
-                {t("updateDialog.later")}
+              <Button variant="outline" onClick={remindOnNextLaunch}>
+                {t("updateDialog.remindOnNextLaunch")}
+              </Button>
+              <Button variant="ghost" onClick={ignoreCurrentVersion}>
+                {t("updateDialog.ignoreThisVersion")}
               </Button>
               <Button onClick={downloadAndInstall} className="gap-2">
                 <Download className="w-4 h-4" />

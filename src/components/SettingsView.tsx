@@ -479,7 +479,7 @@ export function SettingsView() {
               )}
               <Button
                 variant="secondary"
-                onClick={() => checkForUpdates(draft.update_channel)}
+                onClick={() => checkForUpdates(draft.update_channel, { forcePrompt: true })}
                 disabled={status === "checking" || status === "downloading"}
                 className="gap-2"
               >

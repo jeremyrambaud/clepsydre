@@ -59,7 +59,10 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
   const spent = cumulativeSpent ?? (issue.spent_hours ?? 0);
   const remaining = estimated - spent;
   const isOver = estimated > 0 && remaining < 0;
-  const progress = estimated > 0 ? Math.min((spent / estimated) * 100, 100) : 0;
+  const estimatedPct = isOver
+    ? (estimated / spent) * 100
+    : (estimated > 0 ? Math.min((spent / estimated) * 100, 100) : 0);
+  const overPct = isOver ? ((spent - estimated) / spent) * 100 : 0;
 
   return (
     <div className={`flex gap-4 ${!isLast ? "mb-2" : ""}`}>
@@ -122,7 +125,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
               <span className="text-[10px] text-muted-foreground">
                 {estimated > 0 ? `Est: ${formatHoursMinutes(estimated)}` : "No est."}
               </span>
-              <div className="flex-1 h-1 rounded-full bg-surface-highest overflow-hidden">
+              <div className="flex-1 h-1 rounded-full bg-surface-highest overflow-hidden flex">
                 {estimated === 0 ? (
                   <div
                     className="h-full w-full rounded-full"
@@ -137,12 +140,31 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
                       backgroundColor: "rgba(255,180,171,0.25)",
                     }}
                   />
+                ) : isOver ? (
+                  <>
+                    <div
+                      className="h-full bg-destructive/50 transition-all duration-500"
+                      style={{ width: `${estimatedPct}%` }}
+                    />
+                    <div
+                      className="h-full rounded-r-full transition-all duration-500"
+                      style={{
+                        width: `${overPct}%`,
+                        backgroundImage: `repeating-linear-gradient(
+                          -45deg,
+                          transparent,
+                          transparent 2px,
+                          var(--destructive) 2px,
+                          var(--destructive) 4px
+                        )`,
+                        backgroundColor: "rgba(255,180,171,0.25)",
+                      }}
+                    />
+                  </>
                 ) : (
                   <div
-                    className={`h-full rounded-full transition-all ${
-                      isOver ? "bg-destructive" : "bg-tertiary"
-                    }`}
-                    style={{ width: `${progress}%` }}
+                    className="h-full bg-tertiary rounded-full transition-all duration-500"
+                    style={{ width: `${estimatedPct}%` }}
                   />
                 )}
               </div>

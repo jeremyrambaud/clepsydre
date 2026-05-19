@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store";
 import { logTimeEntry, updateTimeEntry, deleteTimeEntry, fetchActivities } from "@/lib/redmine";
 import { toast } from "sonner";
@@ -93,6 +94,39 @@ function formatDate(d: Date): string {
 
 function formatHHMM(d: Date): string {
   return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+}
+
+function TruncatedTicketSubject({ subject }: { subject: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setIsTruncated(el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
+  }, []);
+
+  useEffect(() => {
+    check();
+    const observer = new ResizeObserver(check);
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [check, subject]);
+
+  const paragraph = (
+    <p ref={ref} className="text-sm font-medium text-foreground line-clamp-2 break-words">
+      {subject}
+    </p>
+  );
+
+  if (!isTruncated) return paragraph;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{paragraph}</TooltipTrigger>
+      <TooltipContent className="max-w-sm break-words">{subject}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 export function TimeEntryModal(props: TimeEntryModalProps) {
@@ -247,14 +281,14 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-lg bg-muted p-3 mb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-primary">#{issue.id}</span>
-            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+        <div className="rounded-lg bg-muted p-3 mb-2 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-2 mb-1 min-w-0">
+            <span className="text-xs font-semibold text-primary shrink-0">#{issue.id}</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0">
               {issue.project.name}
             </span>
           </div>
-          <p className="text-sm font-medium text-foreground truncate">{issue.subject}</p>
+          <TruncatedTicketSubject subject={issue.subject} />
         </div>
 
         <div className="grid gap-4">

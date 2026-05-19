@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { RotateCcw, Pause, Play, Square, Clock, ExternalLink } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,39 @@ function formatHoursMinutes(hours: number): string {
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
   return `${h}h ${m.toString().padStart(2, "0")}m`;
+}
+
+function TruncatedIssueTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setIsTruncated(el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
+  }, []);
+
+  useEffect(() => {
+    check();
+    const observer = new ResizeObserver(check);
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [check, title]);
+
+  const heading = (
+    <h3 ref={ref} className="text-xl font-semibold font-heading text-foreground leading-tight line-clamp-2 mb-1">
+      {title}
+    </h3>
+  );
+
+  if (!isTruncated) return heading;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{heading}</TooltipTrigger>
+      <TooltipContent className="max-w-sm break-words">{title}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 interface ActiveTicketSectionProps {
@@ -91,9 +124,7 @@ export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps)
                 <TooltipContent>Ouvrir dans Redmine</TooltipContent>
               </Tooltip>
             </div>
-            <h3 className="text-xl font-semibold font-heading text-foreground leading-tight line-clamp-2 mb-1">
-              {selectedIssue.subject}
-            </h3>
+            <TruncatedIssueTitle title={selectedIssue.subject} />
             <span className="text-xs text-muted-foreground uppercase tracking-wide">
               {selectedIssue.project.name}
             </span>

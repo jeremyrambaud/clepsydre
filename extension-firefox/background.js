@@ -1,73 +1,43 @@
-const NATIVE_HOST = "com.clepsydre.bridge";
+const BRIDGE_URL = "http://127.0.0.1:23847/integration";
+const REQUEST_TIMEOUT_MS = 10000;
 
-let nativePort = null;
-const pendingRequests = new Map();
+async function sendBridgeMessage(message) {
+  const payload = {
+    ...message,
+    requestId: crypto.randomUUID(),
+  };
 
-function connectNative() {
-  if (nativePort) return nativePort;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    nativePort = chrome.runtime.connectNative(NATIVE_HOST);
-
-    nativePort.onMessage.addListener((message) => {
-      const { requestId } = message;
-      if (requestId && pendingRequests.has(requestId)) {
-        const { resolve } = pendingRequests.get(requestId);
-        pendingRequests.delete(requestId);
-        resolve(message);
-      }
-    });
-
-    nativePort.onDisconnect.addListener(() => {
-      nativePort = null;
-      for (const [, { reject }] of pendingRequests) {
-        reject(new Error("Native host disconnected"));
-      }
-      pendingRequests.clear();
-    });
-
-    return nativePort;
-  } catch (err) {
-    nativePort = null;
-    throw err;
-  }
-}
-
-function sendNativeMessage(message) {
-  return new Promise((resolve, reject) => {
-    const requestId = crypto.randomUUID();
-    message.requestId = requestId;
-
-    const timeout = setTimeout(() => {
-      pendingRequests.delete(requestId);
-      reject(new Error("Native host timeout"));
-    }, 10000);
-
-    pendingRequests.set(requestId, {
-      resolve: (msg) => {
-        clearTimeout(timeout);
-        resolve(msg);
+    const response = await fetch(BRIDGE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-      reject: (err) => {
-        clearTimeout(timeout);
-        reject(err);
-      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
     });
 
-    try {
-      const port = connectNative();
-      port.postMessage(message);
-    } catch (err) {
-      pendingRequests.delete(requestId);
-      clearTimeout(timeout);
-      reject(err);
+    if (!response.ok) {
+      throw new Error(`Bridge request failed with status ${response.status}`);
     }
-  });
+
+    return await response.json();
+  } catch (err) {
+    if (err && typeof err === "object" && err.name === "AbortError") {
+      throw new Error("Bridge timeout");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === "clepsydre-bridge") {
-    sendNativeMessage(request.payload)
+    sendBridgeMessage(request.payload)
       .then((response) => {
         sendResponse({ ok: true, data: response });
       })

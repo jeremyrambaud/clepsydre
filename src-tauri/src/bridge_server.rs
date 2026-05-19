@@ -66,43 +66,6 @@ pub fn spawn_bridge_server(app: AppHandle, timer_state: SharedTimerState) {
                 .to_string();
             let issue_id = msg.get("issueId").and_then(|v| v.as_u64()).map(|v| v as u32);
 
-            if action == "getTimerState" {
-                let state = timer_state.lock().map(|s| s.clone());
-                let response = match state {
-                    Ok(ts) => {
-                        serde_json::json!({
-                            "requestId": request_id,
-                            "action": "getTimerState",
-                            "ok": true,
-                            "state": {
-                                "status": ts.status,
-                                "issueId": ts.issue_id,
-                                "issueSubject": ts.issue_subject,
-                                "elapsedSeconds": ts.elapsed_seconds,
-                                "redmineUrl": ts.redmine_url,
-                            }
-                        })
-                    }
-                    Err(e) => {
-                        serde_json::json!({
-                            "requestId": request_id,
-                            "action": "getTimerState",
-                            "ok": false,
-                            "error": e.to_string()
-                        })
-                    }
-                };
-
-                let resp_body = serde_json::to_string(&response).unwrap_or_default();
-                let resp = tiny_http::Response::from_string(resp_body)
-                    .with_header(
-                        tiny_http::Header::from_bytes(b"Content-Type", b"application/json")
-                            .unwrap(),
-                    );
-                let _ = request.respond(resp);
-                continue;
-            }
-
             let payload = IntegrationRequest {
                 action: action.clone(),
                 issue_id,
@@ -143,13 +106,38 @@ pub fn spawn_bridge_server(app: AppHandle, timer_state: SharedTimerState) {
                 let holder = response_holder.lock().unwrap();
                 serde_json::to_string(holder.as_ref().unwrap()).unwrap_or_default()
             } else {
-                serde_json::to_string(&serde_json::json!({
-                    "requestId": request_id,
-                    "action": action,
-                    "ok": false,
-                    "error": "Timeout waiting for app response"
-                }))
-                .unwrap_or_default()
+                if action == "getTimerState" {
+                    let state = timer_state.lock().map(|s| s.clone());
+                    let fallback = match state {
+                        Ok(ts) => serde_json::json!({
+                            "requestId": request_id,
+                            "action": "getTimerState",
+                            "ok": true,
+                            "state": {
+                                "status": ts.status,
+                                "issueId": ts.issue_id,
+                                "issueSubject": ts.issue_subject,
+                                "elapsedSeconds": ts.elapsed_seconds,
+                                "redmineUrl": ts.redmine_url,
+                            }
+                        }),
+                        Err(e) => serde_json::json!({
+                            "requestId": request_id,
+                            "action": "getTimerState",
+                            "ok": false,
+                            "error": e.to_string(),
+                        }),
+                    };
+                    serde_json::to_string(&fallback).unwrap_or_default()
+                } else {
+                    serde_json::to_string(&serde_json::json!({
+                        "requestId": request_id,
+                        "action": action,
+                        "ok": false,
+                        "error": "Timeout waiting for app response"
+                    }))
+                    .unwrap_or_default()
+                }
             };
 
             let resp = tiny_http::Response::from_string(response_json).with_header(

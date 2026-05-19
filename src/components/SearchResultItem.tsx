@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Clock3 } from "lucide-react";
 import type { RedmineIssue } from "@/types";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+
+const COMPACT_RESULT_WIDTH_PX = 620;
 
 interface SearchResultItemProps {
   id: string;
   issue: RedmineIssue;
   isActive?: boolean;
+  showProgress?: boolean;
   onSelect: (issue: RedmineIssue) => void;
+  onManualEntry?: (issue: RedmineIssue) => void;
   onHover?: () => void;
 }
 
@@ -49,7 +54,23 @@ function TruncatedIssueSubject({ subject }: { subject: string }) {
   );
 }
 
-export function SearchResultItem({ id, issue, isActive = false, onSelect, onHover }: SearchResultItemProps) {
+export function SearchResultItem({ id, issue, isActive = false, showProgress = true, onSelect, onManualEntry, onHover }: SearchResultItemProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(false);
+
+  const checkCompact = useCallback(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    setIsCompact(el.clientWidth < COMPACT_RESULT_WIDTH_PX);
+  }, []);
+
+  useEffect(() => {
+    checkCompact();
+    const observer = new ResizeObserver(checkCompact);
+    if (rowRef.current) observer.observe(rowRef.current);
+    return () => observer.disconnect();
+  }, [checkCompact]);
+
   const estimated = issue.estimated_hours ?? 0;
   const spent = issue.spent_hours ?? 0;
   const isOver = estimated > 0 && spent > estimated;
@@ -59,25 +80,31 @@ export function SearchResultItem({ id, issue, isActive = false, onSelect, onHove
   const overPct = isOver ? ((spent - estimated) / spent) * 100 : 0;
 
   return (
-    <button
+    <div
+      ref={rowRef}
       id={id}
       role="option"
       aria-selected={isActive}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left ${isActive ? "bg-surface-high" : "hover:bg-surface-high"}`}
+      className={`w-full flex gap-3 px-4 py-3 transition-colors text-left cursor-pointer ${isCompact ? "items-start" : "items-center"} ${isActive ? "bg-surface-high" : "hover:bg-surface-high"}`}
       onClick={() => onSelect(issue)}
       onMouseEnter={onHover}
     >
-      <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-        #{issue.id}
-      </span>
+      <div className={`flex min-w-0 flex-1 ${isCompact ? "flex-col gap-1" : "flex-row items-center gap-3"}`}>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">
+            #{issue.id}
+          </span>
 
-      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide bg-surface-highest px-2 py-0.5 rounded">
-        {issue.project.name}
-      </span>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide bg-surface-highest px-2 py-0.5 rounded truncate">
+            {issue.project.name}
+          </span>
+        </div>
 
-      <TruncatedIssueSubject subject={issue.subject} />
+        <TruncatedIssueSubject subject={issue.subject} />
+      </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      {showProgress && !isCompact && (
+        <div className="flex items-center gap-2 shrink-0">
           <div className="w-20 h-1.5 rounded-full bg-surface-highest overflow-hidden flex">
             {estimated === 0 ? (
               <div
@@ -125,6 +152,25 @@ export function SearchResultItem({ id, issue, isActive = false, onSelect, onHove
             {formatHoursMinutes(spent)} / {estimated > 0 ? formatHoursMinutes(estimated) : "No est."}
           </span>
         </div>
-    </button>
+      )}
+
+      {onManualEntry && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-surface-highest"
+              onClick={(event) => {
+                event.stopPropagation();
+                onManualEntry(issue);
+              }}
+            >
+              <Clock3 className="w-4 h-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Saisie manuelle</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 }

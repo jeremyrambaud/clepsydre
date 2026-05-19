@@ -7,7 +7,11 @@ import type { RedmineIssue } from "@/types";
 
 const DEBOUNCE_MS = 350;
 
-export function SearchBar() {
+interface SearchBarProps {
+  onManualEntry?: (issue: RedmineIssue) => void;
+}
+
+export function SearchBar({ onManualEntry }: SearchBarProps) {
   const { searchQuery, setSearchQuery, setSelectedIssue } = useIssueStore();
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<RedmineIssue[]>([]);
@@ -71,6 +75,14 @@ export function SearchBar() {
 
   function handleSelect(issue: RedmineIssue) {
     setSelectedIssue(issue);
+    setSearchQuery("");
+    setResults([]);
+    setActiveIndex(-1);
+    setIsOpen(false);
+  }
+
+  function handleManualEntry(issue: RedmineIssue) {
+    onManualEntry?.(issue);
     setSearchQuery("");
     setResults([]);
     setActiveIndex(-1);
@@ -203,6 +215,7 @@ export function SearchBar() {
               issue={issue}
               isActive={index === activeIndex}
               onSelect={handleSelect}
+              onManualEntry={onManualEntry ? handleManualEntry : undefined}
               onHover={() => setActiveIndex(index)}
             />
           ))}

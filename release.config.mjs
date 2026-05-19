@@ -21,6 +21,7 @@ export default {
           "package.json",
           "bun.lockb",
           "src-tauri/Cargo.toml",
+          "src-tauri/Cargo.lock",
           "src-tauri/tauri.conf.json",
           "extension/manifest.json",
           "extension-firefox/manifest.json",

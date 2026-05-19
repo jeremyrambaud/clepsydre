@@ -51,9 +51,10 @@ interface ActiveTicketSectionProps {
   timer: ReturnType<typeof useTimer>;
   onStop?: () => void;
   onClearIssue?: () => void;
+  onManualEntry?: () => void;
 }
 
-export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicketSectionProps) {
+export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry }: ActiveTicketSectionProps) {
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
@@ -289,6 +290,17 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
               <Square className="w-5 h-5" />
             </Button>
           </div>
+
+          {onManualEntry && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3 text-xs text-muted-foreground hover:text-foreground"
+              onClick={onManualEntry}
+            >
+              Saisie manuelle
+            </Button>
+          )}
         </div>
 
         {/* Totals panel (cols 10-12) */}

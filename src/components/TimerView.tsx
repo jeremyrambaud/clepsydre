@@ -63,6 +63,9 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [stoppedStartTime, setStoppedStartTime] = useState<Date | null>(null);
   const [stoppedAtTime, setStoppedAtTime] = useState<Date | null>(null);
   const [editingSession, setEditingSession] = useState<WorkSession | null>(null);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualIssue, setManualIssue] = useState(selectedIssue);
+  const [manualAnchorTime, setManualAnchorTime] = useState<Date>(new Date());
   const [idleDecisionSeconds, setIdleDecisionSeconds] = useState<number | null>(null);
   const idleStartedAtMsRef = useRef<number | null>(null);
   const keepRunningAfterCreateSaveRef = useRef(false);
@@ -185,6 +188,14 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     clearActiveIssue();
   }, [clearActiveIssue, finalizeStopFlow, selectedIssue, settings.express_entry, timer.elapsedSeconds, timer.isPaused, timer.isRunning]);
 
+  const handleOpenManualEntry = useCallback(() => {
+    if (!selectedIssue) return;
+    const now = new Date();
+    setManualIssue(selectedIssue);
+    setManualAnchorTime(now);
+    setManualModalOpen(true);
+  }, [selectedIssue]);
+
   useEffect(() => {
     if (pendingSwitchIssueId == null) return;
     const issueId = pendingSwitchIssueId;
@@ -241,7 +252,8 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       !!selectedIssue &&
       !idleDialogOpen &&
       !createModalOpen &&
-      !editModalOpen;
+      !editModalOpen &&
+      !manualModalOpen;
 
     void invoke("set_idle_monitor_config", {
       enabled: settings.idle_detection_enabled,
@@ -253,6 +265,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   }, [
     createModalOpen,
     editModalOpen,
+    manualModalOpen,
     idleDialogOpen,
     selectedIssue,
     settings.idle_detection_enabled,
@@ -266,7 +279,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
     void listen<{ idle_seconds: number }>("idle-threshold-reached", async (event) => {
       if (!settings.idle_detection_enabled) return;
-      if (createModalOpen || editModalOpen) return;
+      if (createModalOpen || editModalOpen || manualModalOpen) return;
       if (!timer.isRunning || timer.isPaused || !selectedIssue) return;
       if (idleStartedAtMsRef.current !== null) return;
 
@@ -287,6 +300,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     bringAppToFront,
     createModalOpen,
     editModalOpen,
+    manualModalOpen,
     selectedIssue,
     settings.idle_detection_enabled,
     settings.idle_threshold_minutes,
@@ -397,11 +411,38 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setEditingSession(null);
   }
 
+  function handleManualSaved(entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+    if (manualIssue) {
+      const session = buildSession(
+        manualIssue,
+        hours,
+        activityId,
+        comments,
+        spentOn,
+        entryId,
+        manualAnchorTime,
+        manualAnchorTime
+      );
+      session.startedAt = startedAt;
+      session.stoppedAt = stoppedAt;
+      addSession(session);
+      useIssueStore.getState().refreshIssues();
+    }
+
+    setManualModalOpen(false);
+    setManualIssue(null);
+  }
+
   return (
     <div className="flex flex-col max-w-6xl mx-auto lg:h-full lg:min-h-0">
       <div className="shrink-0 space-y-6 pb-4">
         <SearchBar />
-        <ActiveTicketSection timer={timer} onStop={handleStop} onClearIssue={() => { void handleClearActiveIssue(); }} />
+        <ActiveTicketSection
+          timer={timer}
+          onStop={handleStop}
+          onClearIssue={() => { void handleClearActiveIssue(); }}
+          onManualEntry={handleOpenManualEntry}
+        />
       </div>
       <div className="pt-2 lg:flex-1 lg:min-h-0">
         <RecentTickets
@@ -445,6 +486,22 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onDeleted={handleDeleted}
           issue={editingSession.issue}
           session={editingSession}
+        />
+      )}
+
+      {manualIssue && (
+        <TimeEntryModal
+          mode="create"
+          open={manualModalOpen}
+          onClose={() => {
+            setManualModalOpen(false);
+            setManualIssue(null);
+          }}
+          onSaved={handleManualSaved}
+          issue={manualIssue}
+          elapsedSeconds={0}
+          startedAt={formatHHMM(manualAnchorTime)}
+          stoppedAt={formatHHMM(manualAnchorTime)}
         />
       )}
 

@@ -65,7 +65,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
   const overPct = isOver ? ((spent - estimated) / spent) * 100 : 0;
 
   return (
-    <div className={`flex gap-4 ${!isLast ? "mb-2" : ""}`}>
+    <div className={`flex gap-3 sm:gap-4 ${!isLast ? "mb-2" : ""}`}>
       {/* Timeline column */}
       <div className="relative w-14 shrink-0">
         <span className="absolute top-1 left-1/2 -translate-x-1/2 text-[10px] font-medium text-muted-foreground tabular-nums font-heading whitespace-nowrap z-10">
@@ -83,10 +83,10 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
       </div>
 
       {/* Card */}
-      <div className="flex-1 rounded-xl bg-surface-low border border-border px-5 py-3.5 hover:bg-surface-low/80 transition-colors">
-        <div className="grid grid-cols-12 items-center gap-4">
+      <div className="flex-1 rounded-xl bg-surface-low border border-border px-3 sm:px-5 py-3.5 hover:bg-surface-low/80 transition-colors">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-12 items-center gap-3 lg:gap-4">
           {/* Info: cols 1-5 */}
-          <div className="col-span-5 min-w-0">
+          <div className="col-span-2 lg:col-span-5 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">
                 #{issue.id}
@@ -101,14 +101,17 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
           </div>
 
           {/* Session duration: cols 6-7 */}
-          <div className="col-span-2 text-center">
+          <div className="col-span-2 lg:col-span-2 text-left lg:text-center">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-heading mr-2 lg:hidden">
+              Temps passé:
+            </span>
             <span className="text-sm font-semibold text-tertiary tabular-nums">
               {formatHoursMinutes(session.hours)}
             </span>
           </div>
 
           {/* Left/Over: cols 8-10 */}
-          <div className="col-span-3">
+          <div className="min-w-0 lg:col-span-3">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-heading">
                 {estimated === 0 ? "Spent:" : isOver ? "Over:" : "Left:"}
@@ -172,7 +175,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
           </div>
 
           {/* Actions: cols 11-12 */}
-          <div className="col-span-2 flex items-center justify-end gap-1">
+          <div className="lg:col-span-2 flex items-center justify-end gap-1">
             {session.redmineEntryId && (
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -149,8 +149,8 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-[260px] bg-surface-low border-r border-border flex flex-col z-50">
-      <div className="px-5 pt-6 pb-4">
+    <aside className="fixed inset-x-0 bottom-0 h-16 bg-surface-low border-t border-border flex flex-col z-50 md:inset-x-auto md:left-0 md:top-0 md:bottom-0 md:h-auto md:w-[260px] md:border-t-0 md:border-r">
+      <div className="hidden md:block px-5 pt-6 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
             <Clock className="w-5 h-5 text-primary-foreground" />
@@ -166,7 +166,7 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-2">
+      <nav className="h-full px-2 py-1 md:flex-1 md:px-3 md:py-2 flex items-center justify-around md:block">
         {navItems.map(({ id, label, icon: Icon }) => {
           const isActive = currentView === id;
           return (
@@ -174,7 +174,7 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
               key={id}
               onClick={() => onNavigate(id)}
               className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-0.5
+                flex flex-col md:flex-row items-center justify-center md:justify-start gap-0.5 md:gap-3 px-2 md:px-3 py-1.5 md:py-2.5 rounded-lg text-[11px] md:text-sm font-medium transition-colors mb-0 md:mb-0.5 w-auto md:w-full
                 ${isActive
                   ? "bg-surface-highest/60 text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-surface-container/50"
@@ -182,17 +182,18 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
               `}
             >
               <Icon className="w-[18px] h-[18px]" />
-              {label}
+              <span className="leading-none">{label}</span>
             </button>
           );
         })}
       </nav>
 
-      {currentView !== "timer" && (
-        <MiniTimerWidget timer={timer} issue={selectedIssue} />
-      )}
-
-      <SyncStatusBar />
+      <div className="hidden md:block">
+        {currentView !== "timer" && (
+          <MiniTimerWidget timer={timer} issue={selectedIssue} />
+        )}
+        <SyncStatusBar />
+      </div>
     </aside>
   );
 }

@@ -24,16 +24,16 @@ export function AppLayout({ currentView, onNavigate, timer, children }: AppLayou
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar currentView={currentView} onNavigate={onNavigate} timer={timer} />
 
-      <div className="ml-[260px] flex flex-col flex-1 overflow-hidden">
+      <div className="md:ml-[260px] flex flex-col flex-1 overflow-hidden">
         {title && (
-          <header className="h-16 flex items-center px-8 border-b border-border backdrop-blur-sm bg-background/80 shrink-0">
+          <header className="h-14 md:h-16 flex items-center px-4 md:px-8 border-b border-border backdrop-blur-sm bg-background/80 shrink-0">
             <h2 className="text-xl font-semibold font-heading text-foreground">
               {title}
             </h2>
           </header>
         )}
 
-        <main className="flex-1 min-h-0 overflow-y-auto p-6">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">
           {children}
         </main>
       </div>

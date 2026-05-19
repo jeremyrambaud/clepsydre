@@ -1,8 +1,11 @@
 import type { RedmineIssue } from "@/types";
 
 interface SearchResultItemProps {
+  id: string;
   issue: RedmineIssue;
+  isActive?: boolean;
   onSelect: (issue: RedmineIssue) => void;
+  onHover?: () => void;
 }
 
 function formatHoursMinutes(hours: number): string {
@@ -11,15 +14,19 @@ function formatHoursMinutes(hours: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m`;
 }
 
-export function SearchResultItem({ issue, onSelect }: SearchResultItemProps) {
+export function SearchResultItem({ id, issue, isActive = false, onSelect, onHover }: SearchResultItemProps) {
   const progress = issue.estimated_hours
     ? Math.min((issue.spent_hours ?? 0) / issue.estimated_hours, 1) * 100
     : 0;
 
   return (
     <button
-      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-high transition-colors text-left"
+      id={id}
+      role="option"
+      aria-selected={isActive}
+      className={`w-full flex items-center gap-3 px-4 py-3 transition-colors text-left ${isActive ? "bg-surface-high" : "hover:bg-surface-high"}`}
       onClick={() => onSelect(issue)}
+      onMouseEnter={onHover}
     >
       <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
         #{issue.id}

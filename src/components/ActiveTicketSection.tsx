@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Trash2, Pause, Play, Square, Clock, ExternalLink, X } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ interface ActiveTicketSectionProps {
 }
 
 export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry }: ActiveTicketSectionProps) {
+  const { t } = useTranslation();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
@@ -93,7 +95,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
     return (
       <div className="rounded-xl bg-surface-container border border-border p-12 text-center">
         <p className="text-muted-foreground text-sm">
-          Select a ticket to start tracking time
+          {t("activeTicket.empty")}
         </p>
       </div>
     );
@@ -131,7 +133,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                       <ExternalLink className="w-3.5 h-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Ouvrir dans Redmine</TooltipContent>
+                  <TooltipContent>{t("activeTicket.openInRedmine")}</TooltipContent>
                 </Tooltip>
                 {onClearIssue && (
                   <Tooltip>
@@ -145,7 +147,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                         <X className="w-3.5 h-3.5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Fermer le ticket actif</TooltipContent>
+                    <TooltipContent>{t("activeTicket.closeActiveTicket")}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -203,11 +205,11 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
               </div>
               <div className="flex justify-between mt-1.5">
                 <span className={`text-xs ${estimated === 0 || isOver ? "text-destructive" : "text-muted-foreground"}`}>
-                  {formatHoursMinutes(totalSpent)} spent
+                  {formatHoursMinutes(totalSpent)} {t("activeTicket.spent")}
                   {isOver && ` (+${formatHoursMinutes(totalSpent - estimated)})`}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {estimated > 0 ? `${formatHoursMinutes(estimated)} est` : "No estimate"}
+                  {estimated > 0 ? `${formatHoursMinutes(estimated)} ${t("activeTicket.estimateShort")}` : t("activeTicket.noEstimate")}
                 </span>
               </div>
             </div>
@@ -220,7 +222,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
             <div className="flex items-center gap-1.5 mb-3 flex-wrap justify-center">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
-                Début
+                {t("activeTicket.startLabel")}
               </span>
               <Input
                 type="time"
@@ -268,10 +270,10 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                     </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Réinitialiser le timer</TooltipContent>
+                <TooltipContent>{t("activeTicket.resetTooltip")}</TooltipContent>
               </Tooltip>
               <PopoverContent side="top" align="center" className="w-auto p-3">
-                <p className="text-sm font-medium mb-3">Réinitialiser ce timer ?</p>
+                <p className="text-sm font-medium mb-3">{t("activeTicket.resetConfirmTitle")}</p>
                 <div className="flex gap-2">
                   <Button
                     variant="destructive"
@@ -280,10 +282,10 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                     onClick={handleResetWithConfirm}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Confirmer
+                    {t("timeEntry.confirm")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
-                    Annuler
+                    {t("timeEntry.discard")}
                   </Button>
                 </div>
               </PopoverContent>
@@ -316,7 +318,11 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {timer.isRunning && !timer.isPaused ? "Mettre en pause" : timer.isPaused ? "Reprendre" : "Démarrer"}
+                {timer.isRunning && !timer.isPaused
+                  ? t("activeTicket.pauseTooltip")
+                  : timer.isPaused
+                    ? t("activeTicket.resumeTooltip")
+                    : t("activeTicket.startTooltip")}
               </TooltipContent>
             </Tooltip>
 
@@ -332,7 +338,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                   <Square className="w-5 h-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Arrêter le timer</TooltipContent>
+              <TooltipContent>{t("activeTicket.stopTooltip")}</TooltipContent>
             </Tooltip>
           </div>
 
@@ -343,7 +349,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
               className="mt-3 text-xs text-muted-foreground hover:text-foreground"
               onClick={onManualEntry}
             >
-              Saisie manuelle
+              {t("activeTicket.manualEntry")}
             </Button>
           )}
         </div>
@@ -352,7 +358,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
         <div className="lg:col-span-3 bg-surface-low p-4 sm:p-6 flex flex-row lg:flex-col justify-center gap-4 border-t lg:border-t-0 lg:border-l border-border">
           <div className="flex-1 min-w-0">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
-              Redmine Total
+              {t("activeTicket.totals.redmine")}
             </span>
             <p className="text-xl sm:text-2xl font-semibold font-heading text-foreground tabular-nums mt-1">
               {formatHoursMinutes(totalSpent)}
@@ -363,7 +369,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
 
           <div className="flex-1 min-w-0">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
-              Today&apos;s Total
+              {t("activeTicket.totals.today")}
             </span>
             <p className="text-xl sm:text-2xl font-semibold font-heading text-tertiary tabular-nums mt-1">
               {formatHoursMinutes(todayTotalHours)}

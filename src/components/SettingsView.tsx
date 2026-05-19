@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
-import { Link, Eye, EyeOff, RefreshCw, Zap, MessageSquare, MonitorCog, Timer, Download, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react";
+import { Link, Eye, EyeOff, RefreshCw, Zap, MessageSquare, MonitorCog, Timer, Download, CheckCircle2, AlertCircle, RotateCcw, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +19,7 @@ import { useSettingsStore, useUpdaterStore } from "@/store";
 const NO_DEFAULT_ACTIVITY_VALUE = "__none__";
 
 export function SettingsView() {
+  const { t } = useTranslation();
   const { settings, activities, syncActivities, isSyncing, lastSyncedAt } =
     useSettingsStore();
   const [now, setNow] = useState(Date.now());
@@ -64,8 +66,8 @@ export function SettingsView() {
   }
 
   const syncAgo = lastSyncedAt
-    ? `${Math.round((now - lastSyncedAt.getTime()) / 60000)} minutes ago`
-    : "Never";
+    ? t("settings.minutesAgo", { minutes: Math.round((now - lastSyncedAt.getTime()) / 60000) })
+    : t("settings.never");
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -81,17 +83,17 @@ export function SettingsView() {
         <div className="flex items-center gap-2 mb-6">
           <Link className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold font-heading text-foreground">
-            Connection
+            {t("settings.connection")}
           </h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="space-y-2">
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
-              Redmine Domain URL
+              {t("settings.redmineUrl")}
             </label>
             <Input
-              placeholder="https://redmine.example.com"
+              placeholder={t("settings.redmineUrlPlaceholder")}
               value={draft.redmine_url}
               onChange={(e) => setDraft({ ...draft, redmine_url: e.target.value })}
               className="bg-muted border-border focus:border-primary focus:ring-primary/20"
@@ -100,12 +102,12 @@ export function SettingsView() {
 
           <div className="space-y-2">
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
-              API Key
+              {t("settings.apiKey")}
             </label>
             <div className="relative">
               <Input
                 type={showApiKey ? "text" : "password"}
-                placeholder="Enter your API key"
+                placeholder={t("settings.apiKeyPlaceholder")}
                 value={draft.api_key}
                 onChange={(e) => setDraft({ ...draft, api_key: e.target.value })}
                 className="bg-muted border-border pr-10 focus:border-primary focus:ring-primary/20"
@@ -123,7 +125,7 @@ export function SettingsView() {
 
         <div className="mb-6 space-y-2">
           <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
-            Auto Sync Interval
+            {t("settings.autoSyncInterval")}
           </label>
           <div className="flex items-center gap-3 flex-wrap">
             <Input
@@ -141,13 +143,13 @@ export function SettingsView() {
               }}
               className="bg-background border-border w-24"
             />
-            <span className="text-xs text-muted-foreground">minutes</span>
+            <span className="text-xs text-muted-foreground">{t("settings.minutes")}</span>
           </div>
         </div>
 
         <div className="border-t border-border pt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
           <span className="text-sm text-muted-foreground">
-            Last successful sync: <span className="text-foreground">{syncAgo}</span>
+            {t("settings.lastSuccessfulSync")} <span className="text-foreground">{syncAgo}</span>
           </span>
           <Button
             variant="secondary"
@@ -156,7 +158,7 @@ export function SettingsView() {
             className="gap-2"
           >
             <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
-            {isSyncing ? "Syncing..." : "Sync Projects Now"}
+            {isSyncing ? t("settings.syncing") : t("settings.syncProjectsNow")}
           </Button>
         </div>
       </section>
@@ -168,7 +170,7 @@ export function SettingsView() {
           <div className="flex items-center gap-2 mb-1">
             <Zap className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold font-heading text-foreground">
-              Automation
+              {t("settings.automation")}
             </h3>
           </div>
 
@@ -177,8 +179,8 @@ export function SettingsView() {
             <div className="flex items-center gap-3">
               <Timer className="w-4 h-4 text-primary" />
               <div>
-                <p className="text-sm font-medium text-foreground">Express Mode</p>
-                <p className="text-xs text-muted-foreground">Auto-log on stop without confirmation</p>
+                <p className="text-sm font-medium text-foreground">{t("settings.expressMode")}</p>
+                <p className="text-xs text-muted-foreground">{t("settings.expressModeHint")}</p>
               </div>
             </div>
             <Switch
@@ -193,14 +195,14 @@ export function SettingsView() {
           </div>
           {!hasDefaultActivity && (
             <p className="-mt-2 text-xs text-muted-foreground/80">
-              Select a default activity to enable Express Mode.
+              {t("settings.expressModeRequiresDefaultActivity")}
             </p>
           )}
 
           {/* Default Activity */}
           <div className="space-y-2">
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
-              Default Activity
+              {t("settings.defaultActivity")}
             </label>
             <Select
               value={draft.default_activity_id === null ? NO_DEFAULT_ACTIVITY_VALUE : draft.default_activity_id.toString()}
@@ -214,10 +216,10 @@ export function SettingsView() {
               }}
             >
               <SelectTrigger className={`bg-muted border-border ${draft.default_activity_id === null ? "text-muted-foreground/70" : "text-foreground"}`}>
-                <SelectValue placeholder="Select an activity" />
+                <SelectValue placeholder={t("settings.selectActivity")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NO_DEFAULT_ACTIVITY_VALUE}>No default activity</SelectItem>
+                <SelectItem value={NO_DEFAULT_ACTIVITY_VALUE}>{t("settings.noDefaultActivity")}</SelectItem>
                 {activities.map((a) => (
                   <SelectItem key={a.id} value={a.id.toString()}>
                     {a.name}
@@ -232,12 +234,12 @@ export function SettingsView() {
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-muted-foreground" />
               <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
-                Default Comment
+                {t("settings.defaultComment")}
               </label>
             </div>
             <textarea
               rows={3}
-              placeholder="Optional default comment for time entries..."
+              placeholder={t("settings.defaultCommentPlaceholder")}
               value={draft.default_comment}
               onChange={(e) => setDraft({ ...draft, default_comment: e.target.value })}
               className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
@@ -250,16 +252,39 @@ export function SettingsView() {
           <div className="flex items-center gap-2 mb-1">
             <MonitorCog className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold font-heading text-foreground">
-              System
+              {t("settings.system")}
             </h3>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-muted-foreground" />
+              <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
+                {t("settings.language")}
+              </label>
+            </div>
+            <Select
+              value={draft.language}
+              onValueChange={(value) =>
+                setDraft({ ...draft, language: value as "en" | "fr" })
+              }
+            >
+              <SelectTrigger className="bg-muted border-border text-foreground">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">{t("settings.languageEnglish")}</SelectItem>
+                <SelectItem value="fr">{t("settings.languageFrench")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Idle Detection */}
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <div>
-                <p className="text-sm font-medium text-foreground">Idle Detection</p>
-                <p className="text-xs text-muted-foreground">Prompt when activity resumes after long idle time</p>
+                <p className="text-sm font-medium text-foreground">{t("settings.idleDetection")}</p>
+                <p className="text-xs text-muted-foreground">{t("settings.idleDetectionHint")}</p>
               </div>
               <Switch
                 checked={draft.idle_detection_enabled}
@@ -270,7 +295,7 @@ export function SettingsView() {
               />
             </div>
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
-              Idle Detection Threshold
+              {t("settings.idleThreshold")}
             </label>
             <div className="flex items-center gap-4">
               <Slider
@@ -298,7 +323,7 @@ export function SettingsView() {
               }
             />
             <label htmlFor="launch-startup" className="text-sm text-foreground cursor-pointer">
-              Launch at startup
+              {t("settings.launchAtStartup")}
             </label>
           </div>
 
@@ -312,7 +337,7 @@ export function SettingsView() {
               }
             />
             <label htmlFor="minimize-tray" className="text-sm text-foreground cursor-pointer">
-              Minimize to tray
+              {t("settings.minimizeToTray")}
             </label>
           </div>
 
@@ -324,7 +349,7 @@ export function SettingsView() {
         <div className="flex items-center gap-2 mb-4">
           <Download className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold font-heading text-foreground">
-            About & Updates
+            {t("settings.aboutAndUpdates")}
           </h3>
         </div>
 
@@ -335,7 +360,7 @@ export function SettingsView() {
               <span className="font-mono text-muted-foreground">v{appVersion || "..."}</span>
             </p>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">Update channel:</span>
+              <span className="text-xs text-muted-foreground">{t("settings.updateChannel")}</span>
               <Select
                 value={draft.update_channel}
                 onValueChange={(value) =>
@@ -346,8 +371,8 @@ export function SettingsView() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="stable">Stable</SelectItem>
-                  <SelectItem value="beta">Beta</SelectItem>
+                  <SelectItem value="stable">{t("settings.stable")}</SelectItem>
+                  <SelectItem value="beta">{t("settings.beta")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -355,37 +380,37 @@ export function SettingsView() {
             {status === "checking" && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <RefreshCw className="w-3 h-3 animate-spin" />
-                Checking for updates...
+                {t("settings.checkingUpdates")}
               </p>
             )}
             {status === "up-to-date" && (
               <p className="text-xs text-emerald-500 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3 h-3" />
-                You're up to date
+                {t("settings.upToDate")}
               </p>
             )}
             {status === "available" && (
               <p className="text-xs text-primary flex items-center gap-1.5">
                 <Download className="w-3 h-3" />
-                Version {availableVersion} is available
+                {t("settings.versionAvailable", { version: availableVersion })}
               </p>
             )}
             {status === "downloading" && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <RefreshCw className="w-3 h-3 animate-spin" />
-                Downloading and installing...
+                {t("settings.downloadingInstalling")}
               </p>
             )}
             {status === "ready" && (
               <p className="text-xs text-emerald-500 flex items-center gap-1.5">
                 <CheckCircle2 className="w-3 h-3" />
-                Update installed — restart to apply
+                {t("settings.updateReadyRestart")}
               </p>
             )}
             {status === "error" && (
               <p className="text-xs text-destructive flex items-center gap-1.5">
                 <AlertCircle className="w-3 h-3" />
-                {error || "Failed to check for updates"}
+                {error || t("settings.updateCheckFailed")}
               </p>
             )}
           </div>
@@ -398,19 +423,19 @@ export function SettingsView() {
                 className="gap-2 w-full sm:w-auto"
               >
                 <RefreshCw className="w-4 h-4" />
-                Check for Updates
+                {t("settings.checkForUpdates")}
               </Button>
             )}
             {status === "available" && (
               <Button onClick={downloadAndInstall} className="gap-2 w-full sm:w-auto">
                 <Download className="w-4 h-4" />
-                Download & Install
+                {t("settings.downloadInstall")}
               </Button>
             )}
             {status === "ready" && (
               <Button onClick={restartApp} className="gap-2 w-full sm:w-auto">
                 <RotateCcw className="w-4 h-4" />
-                Restart Now
+                {t("settings.restartNow")}
               </Button>
             )}
           </div>
@@ -422,14 +447,14 @@ export function SettingsView() {
         <div className="mx-auto max-w-5xl pointer-events-auto rounded-xl border border-border bg-background/95 backdrop-blur-sm px-3 py-3 shadow-lg">
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <Button variant="outline" onClick={handleDiscard} disabled={!hasChanges} className="w-full sm:w-auto">
-              Discard Changes
+              {t("settings.discardChanges")}
             </Button>
             <Button
               onClick={handleSave}
               disabled={!hasChanges}
               className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
             >
-              Save Configuration
+              {t("settings.saveConfiguration")}
             </Button>
           </div>
         </div>

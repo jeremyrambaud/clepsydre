@@ -21,6 +21,7 @@ interface IntegrationResponse {
     issueId: number | null;
     issueSubject: string | null;
     elapsedSeconds: number;
+    startTimeMs?: number | null;
     redmineUrl: string | null;
   };
   switchRequired?: boolean;
@@ -39,30 +40,34 @@ export function useIntegrationBridge({
   onSwitchRequest,
   onStopRequest,
 }: UseIntegrationBridgeOptions) {
+  const selectedIssue = useIssueStore((s) => s.selectedIssue);
+  const redmineUrl = useSettingsStore((s) => s.settings.redmine_url || null);
   const timerRef = useRef(timer);
   timerRef.current = timer;
 
   const syncTimerState = useCallback(() => {
     const t = timerRef.current;
-    const selectedIssue = useIssueStore.getState().selectedIssue;
     const status = !t.isRunning ? "idle" : t.isPaused ? "paused" : "running";
-    const redmineUrl = useSettingsStore.getState().settings.redmine_url || null;
 
     void invoke("update_timer_state", {
       status,
       issueId: selectedIssue?.id ?? null,
       issueSubject: selectedIssue?.subject ?? null,
       elapsedSeconds: t.elapsedSeconds,
+      startTimeMs: t.startTime ? t.startTime.getTime() : null,
       redmineUrl,
     }).catch(() => {});
-  }, []);
+  }, [redmineUrl, selectedIssue]);
 
   useEffect(() => {
     syncTimerState();
   }, [
+    timer.startTime,
     timer.isRunning,
     timer.isPaused,
     timer.elapsedSeconds,
+    selectedIssue,
+    redmineUrl,
     syncTimerState,
   ]);
 

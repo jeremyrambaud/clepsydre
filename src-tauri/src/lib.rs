@@ -4,6 +4,8 @@ mod migrations;
 
 use commands::{idle, integration, keyring};
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
     menu::MenuBuilder,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -25,13 +27,76 @@ fn update_endpoint_for_channel(channel: &str) -> &'static str {
     }
 }
 
+fn format_clock_timer(seconds: u32) -> String {
+    let h = seconds / 3600;
+    let m = (seconds % 3600) / 60;
+    let s = seconds % 60;
+    format!("{h:02}:{m:02}:{s:02}")
+}
+
+fn now_unix_ms() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or_default()
+}
+
+fn compute_live_elapsed_seconds(state: &integration::TimerStatePayload) -> u32 {
+    match state.status.as_str() {
+        "running" => {
+            if let Some(start_time_ms) = state.start_time_ms {
+                let diff_ms = now_unix_ms().saturating_sub(start_time_ms);
+                (diff_ms / 1000) as u32
+            } else {
+                state.elapsed_seconds
+            }
+        }
+        "paused" => state.elapsed_seconds,
+        _ => 0,
+    }
+}
+
+fn spawn_tray_timer_sync(app: tauri::AppHandle, timer_state: integration::SharedTimerState) {
+    thread::spawn(move || {
+        let mut last_label: Option<String> = None;
+
+        loop {
+            let snapshot = match timer_state.lock() {
+                Ok(state) => state.clone(),
+                Err(_) => {
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+            };
+
+            let next_label = match snapshot.status.as_str() {
+                "running" | "paused" => {
+                    let elapsed = compute_live_elapsed_seconds(&snapshot);
+                    format_clock_timer(elapsed)
+                }
+                _ => String::new(),
+            };
+
+            if last_label.as_deref() != Some(next_label.as_str()) {
+                if let Some(tray) = app.tray_by_id("main-tray") {
+                    let _ = tray.set_title(Some(next_label.as_str()));
+                }
+                last_label = Some(next_label);
+            }
+
+            thread::sleep(Duration::from_secs(1));
+        }
+    });
+}
+
 #[tauri::command]
 fn set_tray_timer_label(app: tauri::AppHandle, label: Option<String>) -> Result<(), String> {
     let tray = app
         .tray_by_id("main-tray")
         .ok_or_else(|| "Tray icon not found".to_string())?;
 
-    tray.set_title(label.as_deref())
+    let title = label.unwrap_or_default();
+    tray.set_title(Some(title.as_str()))
         .map_err(|e| format!("Failed to set tray title: {e}"))
 }
 
@@ -188,6 +253,8 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+
+            spawn_tray_timer_sync(app.handle().clone(), timer_state.clone());
 
             Ok(())
         })

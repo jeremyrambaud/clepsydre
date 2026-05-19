@@ -88,11 +88,11 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
   let lastDay = "";
 
   return (
-    <section className="flex flex-col min-h-0 h-full">
+    <section className="flex flex-col lg:min-h-0 lg:h-full">
       <h4 className="text-[10px] font-medium tracking-[0.15em] text-muted-foreground uppercase mb-3 font-heading shrink-0">
         Timeline
       </h4>
-      <div className="relative flex-1 min-h-0 overflow-y-auto">
+      <div className="relative lg:flex-1 lg:min-h-0 lg:overflow-y-auto">
         {sorted.map((session, index) => {
           const showDaySeparator = session.spentOn !== lastDay;
           lastDay = session.spentOn;
@@ -111,7 +111,7 @@ export function RecentTickets({ onSelectSession, onEditSession }: RecentTicketsP
             <div key={session.id}>
               {showDaySeparator && (
                 <div className={`${index > 0 ? "mt-6" : ""} mb-2`}>
-                  <div className="flex items-center gap-4 rounded-lg bg-surface-highest/50 px-4 py-2.5 text-[11px] text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-surface-highest/50 px-3 sm:px-4 py-2.5 text-[11px] text-muted-foreground">
                     <span className="text-xs font-bold tracking-wide text-foreground uppercase font-heading whitespace-nowrap mr-auto">
                       {formatDayLabel(session.spentOn)}
                     </span>

@@ -15,7 +15,7 @@ pub struct IdleMonitorConfig {
 pub type IdleMonitorState = Arc<Mutex<IdleMonitorConfig>>;
 
 #[derive(Clone, Serialize)]
-struct IdleResumePayload {
+struct IdleThresholdPayload {
     idle_seconds: u64,
 }
 
@@ -42,7 +42,7 @@ pub fn set_idle_monitor_config(
 
 pub fn spawn_idle_monitor(app: AppHandle, state: IdleMonitorState) {
     thread::spawn(move || {
-        let mut threshold_exceeded = false;
+        let mut threshold_reached = false;
         let mut exceeded_peak_seconds = 0_u64;
 
         loop {
@@ -54,7 +54,7 @@ pub fn spawn_idle_monitor(app: AppHandle, state: IdleMonitorState) {
             };
 
             if !config.enabled || !config.tracking_active || config.threshold_seconds == 0 {
-                threshold_exceeded = false;
+                threshold_reached = false;
                 exceeded_peak_seconds = 0;
                 continue;
             }
@@ -65,34 +65,35 @@ pub fn spawn_idle_monitor(app: AppHandle, state: IdleMonitorState) {
             };
 
             if idle_seconds >= config.threshold_seconds {
-                threshold_exceeded = true;
-                exceeded_peak_seconds = exceeded_peak_seconds.max(idle_seconds);
+                if threshold_reached {
+                    exceeded_peak_seconds = exceeded_peak_seconds.max(idle_seconds);
+                    continue;
+                }
+
+                threshold_reached = true;
+                exceeded_peak_seconds = idle_seconds;
+
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                    let _ = window.request_user_attention(Some(UserAttentionType::Critical));
+                }
+
+                let payload = IdleThresholdPayload { idle_seconds };
+                let _ = app.emit("idle-threshold-reached", payload);
                 continue;
             }
 
-            if !threshold_exceeded {
-                continue;
+            if threshold_reached {
+                let payload = IdleThresholdPayload {
+                    idle_seconds: exceeded_peak_seconds.max(config.threshold_seconds),
+                };
+                let _ = app.emit("idle-threshold-ended", payload);
             }
 
-            threshold_exceeded = false;
-            let exceeded_idle_seconds = if exceeded_peak_seconds == 0 {
-                config.threshold_seconds
-            } else {
-                exceeded_peak_seconds
-            };
+            threshold_reached = false;
             exceeded_peak_seconds = 0;
-
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-                let _ = window.request_user_attention(Some(UserAttentionType::Critical));
-            }
-
-            let payload = IdleResumePayload {
-                idle_seconds: exceeded_idle_seconds,
-            };
-            let _ = app.emit("idle-resume-threshold-exceeded", payload);
         }
     });
 }

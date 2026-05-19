@@ -14,19 +14,6 @@ import { useSettingsStore, useUpdaterStore, useIssueStore } from "@/store";
 
 type View = "timer" | "analytics" | "history" | "settings";
 
-function formatClockTimer(seconds: number): string {
-  const h = Math.floor(seconds / 3600)
-    .toString()
-    .padStart(2, "0");
-  const m = Math.floor((seconds % 3600) / 60)
-    .toString()
-    .padStart(2, "0");
-  const s = Math.floor(seconds % 60)
-    .toString()
-    .padStart(2, "0");
-  return `${h}:${m}:${s}`;
-}
-
 function App() {
   const [currentView, setCurrentView] = useState<View>("timer");
   const [pendingSwitchIssueId, setPendingSwitchIssueId] = useState<number | null>(null);
@@ -42,11 +29,6 @@ function App() {
   const isSyncing = useSettingsStore((s) => s.isSyncing);
   const lastSyncedAt = useSettingsStore((s) => s.lastSyncedAt);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
-
-  useEffect(() => {
-    const label = timer.isRunning ? formatClockTimer(timer.elapsedSeconds) : null;
-    void invoke("set_tray_timer_label", { label }).catch(() => {});
-  }, [timer.elapsedSeconds, timer.isRunning]);
 
   useEffect(() => {
     void invoke("set_minimize_to_tray", { enabled: minimizeToTray }).catch(() => {});

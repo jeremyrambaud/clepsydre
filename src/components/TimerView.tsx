@@ -66,9 +66,16 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [idleDecisionSeconds, setIdleDecisionSeconds] = useState<number | null>(null);
   const idleStartedAtMsRef = useRef<number | null>(null);
   const keepRunningAfterCreateSaveRef = useRef(false);
+  const clearIssueAfterCreateFlowRef = useRef(false);
   const pendingSwitchIssueIdRef = useRef<number | null>(null);
   const [stoppedIssue, setStoppedIssue] = useState(selectedIssue);
   const idleDialogOpen = idleDecisionSeconds !== null;
+
+  const clearActiveIssue = useCallback(() => {
+    setSelectedIssue(null);
+    setStoppedIssue(null);
+    timer.reset();
+  }, [setSelectedIssue, timer]);
 
   function handleSelectFromSession(session: WorkSession) {
     setSelectedIssue(session.issue);
@@ -160,6 +167,23 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     keepRunningAfterCreateSaveRef.current = false;
     await finalizeStopFlow();
   }, [finalizeStopFlow]);
+
+  const handleClearActiveIssue = useCallback(async () => {
+    if (!selectedIssue) return;
+
+    if (timer.isRunning || timer.isPaused) {
+      clearIssueAfterCreateFlowRef.current = true;
+      const shouldClearImmediately = settings.express_entry || timer.elapsedSeconds <= 0;
+      await finalizeStopFlow(undefined, { keepRunningAfterCreateSave: false });
+      if (shouldClearImmediately) {
+        clearIssueAfterCreateFlowRef.current = false;
+        clearActiveIssue();
+      }
+      return;
+    }
+
+    clearActiveIssue();
+  }, [clearActiveIssue, finalizeStopFlow, selectedIssue, settings.express_entry, timer.elapsedSeconds, timer.isPaused, timer.isRunning]);
 
   useEffect(() => {
     if (pendingSwitchIssueId == null) return;
@@ -338,6 +362,12 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     }
     setCreateModalOpen(false);
 
+    if (clearIssueAfterCreateFlowRef.current) {
+      clearIssueAfterCreateFlowRef.current = false;
+      clearActiveIssue();
+      return;
+    }
+
     if (keepRunningAfterCreateSaveRef.current) {
       keepRunningAfterCreateSaveRef.current = false;
       return;
@@ -371,7 +401,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     <div className="flex flex-col max-w-6xl mx-auto h-full min-h-0">
       <div className="shrink-0 space-y-6 pb-4">
         <SearchBar />
-        <ActiveTicketSection timer={timer} onStop={handleStop} />
+        <ActiveTicketSection timer={timer} onStop={handleStop} onClearIssue={() => { void handleClearActiveIssue(); }} />
       </div>
       <div className="flex-1 min-h-0 pt-2">
         <RecentTickets
@@ -387,6 +417,13 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onClose={() => {
             keepRunningAfterCreateSaveRef.current = false;
             setCreateModalOpen(false);
+
+            if (clearIssueAfterCreateFlowRef.current) {
+              clearIssueAfterCreateFlowRef.current = false;
+              setSelectedIssue(null);
+              setStoppedIssue(null);
+            }
+
             if (!timer.isRunning) {
               timer.reset();
             }

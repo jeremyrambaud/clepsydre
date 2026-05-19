@@ -85,10 +85,10 @@ export const useSettingsStore = create<SettingsState>()(
       syncActivities: async () => {
         set({ isSyncing: true });
         try {
-          const [activities] = await Promise.all([
-            fetchActivities(),
-            useIssueStore.getState().loadSessions(),
-          ]);
+          const activities = await fetchActivities();
+          const issueStore = useIssueStore.getState();
+          await issueStore.loadSessions();
+          await issueStore.refreshIssues();
           set({
             activities,
             isSyncing: false,

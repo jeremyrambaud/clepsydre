@@ -4,8 +4,9 @@
   "version": "1.0.0.14",
   "description": "Start and stop Clepsydre app timers directly from Redmine issue pages.",
   "permissions": [
-    "nativeMessaging",
-    "*://*/*/issues/*"
+    "*://*/*/issues/*",
+    "http://127.0.0.1:23847/*",
+    "http://localhost:23847/*"
   ],
   "background": {
     "scripts": [

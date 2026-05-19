@@ -70,7 +70,6 @@ function App() {
   }, [launchAtStartup, settingsLoaded]);
 
   const checkForUpdates = useUpdaterStore((s) => s.checkForUpdates);
-  const updateCheckedRef = useRef(false);
 
   useEffect(() => {
     if (i18n.language !== language) {
@@ -79,9 +78,16 @@ function App() {
   }, [i18n, language]);
 
   useEffect(() => {
-    if (!settingsLoaded || updateCheckedRef.current) return;
-    updateCheckedRef.current = true;
-    void checkForUpdates(updateChannel);
+    if (!settingsLoaded) return;
+
+    void checkForUpdates(updateChannel, { silent: true });
+
+    const interval = window.setInterval(() => {
+      const channel = useSettingsStore.getState().settings.update_channel;
+      void checkForUpdates(channel, { silent: true });
+    }, 60 * 60 * 1000);
+
+    return () => window.clearInterval(interval);
   }, [settingsLoaded, checkForUpdates, updateChannel]);
 
   useEffect(() => {

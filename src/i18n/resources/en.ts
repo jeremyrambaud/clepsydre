@@ -207,6 +207,8 @@ const en = {
     genericError: "An unexpected error occurred while checking for updates.",
     downloadingInline: "Downloading and installing update...",
     later: "Later",
+    remindOnNextLaunch: "Remind me on next launch",
+    ignoreThisVersion: "Ignore this version",
     downloadInstall: "Download and Install",
     installing: "Installing...",
     restartNow: "Restart Now",

@@ -28,9 +28,15 @@ pub fn default_timer_state() -> SharedTimerState {
 
 #[tauri::command]
 pub fn show_main_window(app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+    }
+
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())?;
+    let _ = window.set_skip_taskbar(false);
     let _ = window.unminimize();
     let _ = window.show();
     let _ = window.set_focus();

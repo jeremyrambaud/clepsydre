@@ -57,6 +57,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
   const { t } = useTranslation();
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const { issue } = session;
+  const sessionComment = session.comments.trim();
   const estimated = issue.estimated_hours ?? 0;
   const spent = cumulativeSpent ?? (issue.spent_hours ?? 0);
   const remaining = estimated - spent;
@@ -100,6 +101,14 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
             <TruncatedText className="text-sm font-medium text-foreground block" tooltipClassName="max-w-xs">
               {issue.subject}
             </TruncatedText>
+            {sessionComment && (
+              <TruncatedText
+                className="text-xs text-muted-foreground/90 block mt-1"
+                tooltipClassName="max-w-sm whitespace-pre-wrap"
+              >
+                {sessionComment}
+              </TruncatedText>
+            )}
           </div>
 
           {/* Session duration: cols 6-7 */}

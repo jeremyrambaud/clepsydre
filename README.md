@@ -26,6 +26,12 @@ bun run tauri dev
 bun run tauri build
 ```
 
+## Browser Extension Bridge
+
+The packaged Chrome and Firefox extensions connect directly to the local Clepsydre bridge endpoint at `http://127.0.0.1:23847/integration`.
+
+No manual native host installation command is required on macOS, Linux, or Windows.
+
 ## Project Structure
 
 ```

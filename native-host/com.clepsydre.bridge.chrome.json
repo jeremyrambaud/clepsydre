@@ -1,9 +1,0 @@
-{
-  "name": "com.clepsydre.bridge",
-  "description": "Clepsydre Native Messaging Host — bridges browser extension to the desktop app",
-  "path": "__NATIVE_HOST_PATH__",
-  "type": "stdio",
-  "allowed_origins": [
-    "chrome-extension://__EXTENSION_ID__/"
-  ]
-}

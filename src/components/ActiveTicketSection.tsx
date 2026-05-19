@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { RotateCcw, Pause, Play, Square, Clock, ExternalLink, X } from "lucide-react";
+import { Trash2, Pause, Play, Square, Clock, ExternalLink, X } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIssueStore, useSettingsStore } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
@@ -58,6 +59,12 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleResetWithConfirm = useCallback(() => {
+    timer.reset();
+    setConfirmReset(false);
+  }, [timer]);
 
   useEffect(() => {
     let mounted = true;
@@ -247,14 +254,35 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            <Button
-              variant="secondary"
-              size="icon"
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
-              onClick={timer.reset}
-            >
-              <RotateCcw className="w-5 h-5" />
-            </Button>
+            <Popover open={confirmReset} onOpenChange={setConfirmReset}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
+                  disabled={!timer.isRunning && !timer.isPaused}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="center" className="w-auto p-3">
+                <p className="text-sm font-medium mb-3">Réinitialiser ce timer ?</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={handleResetWithConfirm}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Confirmer
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmReset(false)}>
+                    Annuler
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
 
             <Button
               size="icon"

@@ -255,16 +255,21 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
 
           <div className="flex items-center gap-3 sm:gap-4">
             <Popover open={confirmReset} onOpenChange={setConfirmReset}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
-                  disabled={!timer.isRunning && !timer.isPaused}
-                >
-                  <Trash2 className="w-5 h-5" />
-                </Button>
-              </PopoverTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
+                      disabled={!timer.isRunning && !timer.isPaused}
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Réinitialiser le timer</TooltipContent>
+              </Tooltip>
               <PopoverContent side="top" align="center" className="w-auto p-3">
                 <p className="text-sm font-medium mb-3">Réinitialiser ce timer ?</p>
                 <div className="flex gap-2">
@@ -284,39 +289,51 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
               </PopoverContent>
             </Popover>
 
-            <Button
-              size="icon"
-              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${
-                timer.isRunning && !timer.isPaused
-                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                  : "bg-tertiary hover:bg-tertiary/90 text-on-tertiary"
-              }`}
-              onClick={() => {
-                if (!timer.isRunning) {
-                  timer.start();
-                } else if (timer.isPaused) {
-                  timer.resume();
-                } else {
-                  timer.pause();
-                }
-              }}
-            >
-              {timer.isRunning && !timer.isPaused ? (
-                <Pause className="w-6 h-6 sm:w-8 sm:h-8" />
-              ) : (
-                <Play className="w-6 h-6 sm:w-8 sm:h-8 ml-1" />
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${
+                    timer.isRunning && !timer.isPaused
+                      ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                      : "bg-tertiary hover:bg-tertiary/90 text-on-tertiary"
+                  }`}
+                  onClick={() => {
+                    if (!timer.isRunning) {
+                      timer.start();
+                    } else if (timer.isPaused) {
+                      timer.resume();
+                    } else {
+                      timer.pause();
+                    }
+                  }}
+                >
+                  {timer.isRunning && !timer.isPaused ? (
+                    <Pause className="w-6 h-6 sm:w-8 sm:h-8" />
+                  ) : (
+                    <Play className="w-6 h-6 sm:w-8 sm:h-8 ml-1" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {timer.isRunning && !timer.isPaused ? "Mettre en pause" : timer.isPaused ? "Reprendre" : "Démarrer"}
+              </TooltipContent>
+            </Tooltip>
 
-            <Button
-              variant="secondary"
-              size="icon"
-              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-error-bg/80 hover:bg-error-bg text-error-text"
-              onClick={onStop ?? timer.stop}
-              disabled={!timer.isRunning && !timer.isPaused}
-            >
-              <Square className="w-5 h-5" />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-error-bg/80 hover:bg-error-bg text-error-text"
+                  onClick={onStop ?? timer.stop}
+                  disabled={!timer.isRunning && !timer.isPaused}
+                >
+                  <Square className="w-5 h-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Arrêter le timer</TooltipContent>
+            </Tooltip>
           </div>
 
           {onManualEntry && (

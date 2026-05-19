@@ -261,7 +261,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           {/* Date */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-              Date
+              Date <span className="text-destructive">*</span>
             </Label>
             <Input
               type="date"
@@ -275,7 +275,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-                Start
+                Start <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -287,7 +287,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-                End
+                End <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -299,7 +299,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-                Duration
+                Duration <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -313,7 +313,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           {/* Activity */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-              Activity
+              Activity <span className="text-destructive">*</span>
             </Label>
             {isLoadingActivities ? (
               <div className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground">
@@ -322,7 +322,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               </div>
             ) : (
               <Select value={activityId} onValueChange={setActivityId}>
-                <SelectTrigger className="bg-muted border-border">
+                <SelectTrigger className={`bg-muted border-border ${!activityId ? "text-muted-foreground/70" : "text-foreground"}`}>
                   <SelectValue placeholder="Select an activity" />
                 </SelectTrigger>
                 <SelectContent>
@@ -346,7 +346,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               placeholder="Describe what you worked on..."
               value={comments}
               onChange={(e) => setComments(e.target.value)}
-              className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
+              className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
             />
           </div>
         </div>

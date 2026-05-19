@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { useSettingsStore, useUpdaterStore } from "@/store";
 
+const NO_DEFAULT_ACTIVITY_VALUE = "__none__";
+
 export function SettingsView() {
   const { settings, activities, syncActivities, isSyncing, lastSyncedAt } =
     useSettingsStore();
@@ -23,6 +25,7 @@ export function SettingsView() {
 
   const [showApiKey, setShowApiKey] = useState(false);
   const [draft, setDraft] = useState(settings);
+  const hasDefaultActivity = draft.default_activity_id !== null;
 
   const { status, availableVersion, error } = useUpdaterStore();
   const checkForUpdates = useUpdaterStore((s) => s.checkForUpdates);
@@ -43,6 +46,14 @@ export function SettingsView() {
       setDraft(useSettingsStore.getState().settings);
     });
   }, [loadCredentials]);
+
+  useEffect(() => {
+    if (draft.default_activity_id !== null || !draft.express_entry) return;
+    setDraft((current) => ({
+      ...current,
+      express_entry: false,
+    }));
+  }, [draft.default_activity_id, draft.express_entry]);
 
   function handleSave() {
     saveSettings(draft);
@@ -172,10 +183,19 @@ export function SettingsView() {
             </div>
             <Switch
               checked={draft.express_entry}
-              onCheckedChange={(checked) => setDraft({ ...draft, express_entry: checked })}
+              onCheckedChange={(checked) => {
+                if (checked && !hasDefaultActivity) return;
+                setDraft({ ...draft, express_entry: checked });
+              }}
+              disabled={!hasDefaultActivity}
               className="data-[state=checked]:bg-primary"
             />
           </div>
+          {!hasDefaultActivity && (
+            <p className="-mt-2 text-xs text-muted-foreground/80">
+              Select a default activity to enable Express Mode.
+            </p>
+          )}
 
           {/* Default Activity */}
           <div className="space-y-2">
@@ -183,13 +203,21 @@ export function SettingsView() {
               Default Activity
             </label>
             <Select
-              value={draft.default_activity_id?.toString() ?? ""}
-              onValueChange={(v) => setDraft({ ...draft, default_activity_id: Number(v) })}
+              value={draft.default_activity_id === null ? NO_DEFAULT_ACTIVITY_VALUE : draft.default_activity_id.toString()}
+              onValueChange={(v) => {
+                const nextDefaultActivityId = v === NO_DEFAULT_ACTIVITY_VALUE ? null : Number(v);
+                setDraft({
+                  ...draft,
+                  default_activity_id: nextDefaultActivityId,
+                  express_entry: nextDefaultActivityId === null ? false : draft.express_entry,
+                });
+              }}
             >
-              <SelectTrigger className="bg-muted border-border">
+              <SelectTrigger className={`bg-muted border-border ${draft.default_activity_id === null ? "text-muted-foreground/70" : "text-foreground"}`}>
                 <SelectValue placeholder="Select an activity" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={NO_DEFAULT_ACTIVITY_VALUE}>No default activity</SelectItem>
                 {activities.map((a) => (
                   <SelectItem key={a.id} value={a.id.toString()}>
                     {a.name}
@@ -212,7 +240,7 @@ export function SettingsView() {
               placeholder="Optional default comment for time entries..."
               value={draft.default_comment}
               onChange={(e) => setDraft({ ...draft, default_comment: e.target.value })}
-              className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
+              className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
             />
           </div>
         </section>

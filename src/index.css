@@ -100,6 +100,36 @@
     * {
         @apply border-border outline-ring/50;
     }
+
+    button,
+    [role="button"],
+    a[href],
+    summary,
+    label[for],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="range"],
+    select,
+    [data-slot="select-trigger"],
+    [data-slot="select-item"],
+    [data-slot="dialog-close"],
+    [data-slot="popover-trigger"],
+    [data-slot="tooltip-trigger"] {
+        cursor: pointer;
+    }
+
+    button:disabled,
+    input:disabled,
+    select:disabled,
+    [disabled],
+    [data-disabled],
+    [aria-disabled="true"] {
+        cursor: not-allowed;
+    }
+
     body {
         @apply bg-background text-foreground;
         font-family: 'Inter', sans-serif;

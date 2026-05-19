@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Search, Loader2, AlertCircle } from "lucide-react";
 import { useIssueStore } from "@/store";
 import { searchIssues } from "@/lib/redmine";
@@ -13,8 +13,14 @@ export function SearchBar() {
   const [results, setResults] = useState<RedmineIssue[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listboxId = useId();
+
+  const getOptionId = useCallback((issueId: number, index: number) => {
+    return `search-result-${issueId}-${index}`;
+  }, []);
 
   const searchRedmine = useCallback(async (query: string) => {
     if (!query.trim()) {
@@ -41,6 +47,7 @@ export function SearchBar() {
   function handleQueryChange(value: string) {
     setSearchQuery(value);
     setIsOpen(true);
+    setActiveIndex(-1);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -52,6 +59,7 @@ export function SearchBar() {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        setActiveIndex(-1);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -65,10 +73,73 @@ export function SearchBar() {
     setSelectedIssue(issue);
     setSearchQuery("");
     setResults([]);
+    setActiveIndex(-1);
     setIsOpen(false);
   }
 
-  const showDropdown = isOpen && (isLoading || error || results.length > 0 || searchQuery.trim().length > 0);
+  useEffect(() => {
+    if (results.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+
+    setActiveIndex((current) => {
+      if (current < 0) return 0;
+      return Math.min(current, results.length - 1);
+    });
+  }, [results]);
+
+  useEffect(() => {
+    if (!isOpen || activeIndex < 0 || activeIndex >= results.length) return;
+    const optionId = getOptionId(results[activeIndex].id, activeIndex);
+    const option = document.getElementById(optionId);
+    option?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex, getOptionId, isOpen, results]);
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!isOpen && (e.key === "ArrowDown" || e.key === "ArrowUp") && results.length > 0) {
+      e.preventDefault();
+      setIsOpen(true);
+      setActiveIndex(e.key === "ArrowDown" ? 0 : results.length - 1);
+      return;
+    }
+
+    if (!isOpen || results.length === 0) {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        setActiveIndex(-1);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((current) => (current + 1) % results.length);
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((current) => (current <= 0 ? results.length - 1 : current - 1));
+      return;
+    }
+
+    if (e.key === "Enter") {
+      if (activeIndex >= 0 && activeIndex < results.length) {
+        e.preventDefault();
+        handleSelect(results[activeIndex]);
+      }
+      return;
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setIsOpen(false);
+      setActiveIndex(-1);
+    }
+  }
+
+  const showDropdown = isOpen && (isLoading || Boolean(error) || results.length > 0 || searchQuery.trim().length > 0);
 
   return (
     <div ref={wrapperRef} className="relative w-full">
@@ -81,15 +152,30 @@ export function SearchBar() {
         <input
           type="text"
           placeholder="Search tickets by ID, project, or title..."
+          autoCorrect="off"
           value={searchQuery}
           onChange={(e) => handleQueryChange(e.target.value)}
           onFocus={() => { if (searchQuery.trim()) setIsOpen(true); }}
+          onKeyDown={handleKeyDown}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={showDropdown}
+          aria-controls={showDropdown ? listboxId : undefined}
+          aria-activedescendant={
+            showDropdown && activeIndex >= 0 && activeIndex < results.length
+              ? getOptionId(results[activeIndex].id, activeIndex)
+              : undefined
+          }
           className="w-full h-12 pl-12 pr-4 rounded-xl bg-surface-high border border-border text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-colors"
         />
       </div>
 
       {showDropdown && (
-        <div className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-surface-container border border-border shadow-xl overflow-hidden z-40 max-h-80 overflow-y-auto">
+        <div
+          id={listboxId}
+          role="listbox"
+          className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-surface-container border border-border shadow-xl overflow-hidden z-40 max-h-80 overflow-y-auto"
+        >
           {isLoading && results.length === 0 && (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -110,8 +196,15 @@ export function SearchBar() {
             </div>
           )}
 
-          {results.map((issue) => (
-            <SearchResultItem key={issue.id} issue={issue} onSelect={handleSelect} />
+          {results.map((issue, index) => (
+            <SearchResultItem
+              key={issue.id}
+              id={getOptionId(issue.id, index)}
+              issue={issue}
+              isActive={index === activeIndex}
+              onSelect={handleSelect}
+              onHover={() => setActiveIndex(index)}
+            />
           ))}
         </div>
       )}

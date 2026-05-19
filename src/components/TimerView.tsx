@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { UserAttentionType, getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { SearchBar } from "./SearchBar";
-import { ActiveTicketSection } from "./ActiveTicketSection";
+import { ActiveTicketSection } from "@/components/ActiveTicketSection";
 import { RecentTickets } from "./RecentTickets";
 import { TimeEntryModal } from "./TimeEntryModal";
 import { Button } from "@/components/ui/button";

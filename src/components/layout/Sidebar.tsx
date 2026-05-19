@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Clock, LayoutDashboard, History, Settings, Pause, Square, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -14,11 +15,11 @@ interface SidebarProps {
   timer: ReturnType<typeof useTimer>;
 }
 
-const navItems: { id: View; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "timer", label: "Timer", icon: Clock },
-  { id: "analytics", label: "Analytics", icon: LayoutDashboard },
-  { id: "history", label: "History", icon: History },
-  { id: "settings", label: "Settings", icon: Settings },
+const navItems: { id: View; labelKey: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "timer", labelKey: "sidebar.nav.timer", icon: Clock },
+  { id: "analytics", labelKey: "sidebar.nav.analytics", icon: LayoutDashboard },
+  { id: "history", labelKey: "sidebar.nav.history", icon: History },
+  { id: "settings", labelKey: "sidebar.nav.settings", icon: Settings },
 ];
 
 function formatHoursMinutes(hours: number): string {
@@ -28,6 +29,8 @@ function formatHoursMinutes(hours: number): string {
 }
 
 function MiniTimerWidget({ timer, issue }: { timer: ReturnType<typeof useTimer>; issue: RedmineIssue | null }) {
+  const { t } = useTranslation();
+
   if (!timer.isRunning && !timer.isPaused) return null;
 
   const progress = issue?.estimated_hours
@@ -73,7 +76,7 @@ function MiniTimerWidget({ timer, issue }: { timer: ReturnType<typeof useTimer>;
           onClick={timer.isPaused ? timer.resume : timer.pause}
         >
           <Pause className="w-3 h-3 mr-1" />
-          {timer.isPaused ? "Resume" : "Pause"}
+          {timer.isPaused ? t("sidebar.mini.resume") : t("sidebar.mini.pause")}
         </Button>
         <Button
           variant="destructive"
@@ -82,7 +85,7 @@ function MiniTimerWidget({ timer, issue }: { timer: ReturnType<typeof useTimer>;
           onClick={timer.stop}
         >
           <Square className="w-3 h-3 mr-1" />
-          Stop
+          {t("sidebar.mini.stop")}
         </Button>
       </div>
     </div>
@@ -90,6 +93,7 @@ function MiniTimerWidget({ timer, issue }: { timer: ReturnType<typeof useTimer>;
 }
 
 function SyncStatusBar() {
+  const { t, i18n } = useTranslation();
   const { syncActivities, isSyncing, lastSyncedAt, settings } = useSettingsStore();
   const [now, setNow] = useState(Date.now());
 
@@ -104,18 +108,19 @@ function SyncStatusBar() {
     ? Math.round((now - lastSyncedAt.getTime()) / 60000)
     : null;
   const isOutOfSync = ageMinutes === null || ageMinutes > settings.check_interval_minutes;
+  const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
   const lastSyncLabel = lastSyncedAt
-    ? lastSyncedAt.toLocaleString("fr-FR", {
+    ? lastSyncedAt.toLocaleString(locale, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "never";
+    : t("sidebar.sync.never");
   const syncLabel = isOutOfSync
-    ? `Unsynced • Last sync: ${lastSyncLabel}`
-    : `Synced ${ageMinutes}m ago`;
+    ? t("sidebar.sync.unsyncedWithLast", { lastSync: lastSyncLabel })
+    : t("sidebar.sync.syncedMinutesAgo", { minutes: ageMinutes });
 
   return (
     <div className="px-5 py-4 border-t border-border">
@@ -138,7 +143,7 @@ function SyncStatusBar() {
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">Sync with Redmine</TooltipContent>
+          <TooltipContent side="right">{t("sidebar.sync.tooltip")}</TooltipContent>
         </Tooltip>
       </div>
     </div>
@@ -146,6 +151,7 @@ function SyncStatusBar() {
 }
 
 export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
+  const { t } = useTranslation();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
 
   return (
@@ -160,14 +166,14 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
               CLEPSYDRE
             </h1>
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
-              Time Tracking
+              {t("sidebar.brandTagline")}
             </span>
           </div>
         </div>
       </div>
 
       <nav className="h-full px-2 py-1 md:flex-1 md:px-3 md:py-2 flex items-center justify-around md:block">
-        {navItems.map(({ id, label, icon: Icon }) => {
+        {navItems.map(({ id, labelKey, icon: Icon }) => {
           const isActive = currentView === id;
           return (
             <button
@@ -182,7 +188,7 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
               `}
             >
               <Icon className="w-[18px] h-[18px]" />
-              <span className="leading-none">{label}</span>
+              <span className="leading-none">{t(labelKey)}</span>
             </button>
           );
         })}

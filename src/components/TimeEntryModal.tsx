@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useId } from "react";
+import { useTranslation } from "react-i18next";
 import { Clock, Loader2, Trash2, Search, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,6 +134,7 @@ function TruncatedTicketSubject({ subject }: { subject: string }) {
 }
 
 export function TimeEntryModal(props: TimeEntryModalProps) {
+  const { t } = useTranslation();
   const { open, onClose, issue } = props;
   const { settings, activities, setActivities } = useSettingsStore();
 
@@ -364,17 +366,17 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
   async function handleSubmit() {
     if (isTicketSearchMode) {
-      toast.error("Please select a ticket from the list or cancel the search");
+      toast.error(t("timeEntry.validationSelectTicket"));
       return;
     }
 
     if (!activityId) {
-      toast.error("Please select an activity");
+      toast.error(t("timeEntry.validationSelectActivity"));
       return;
     }
     const hours = timeValueToHours(duration);
     if (hours <= 0) {
-      toast.error("Time must be greater than 00:00");
+      toast.error(t("timeEntry.validationTimePositive"));
       return;
     }
 
@@ -388,8 +390,11 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           comments,
           spentOn,
         });
-        toast.success("Time entry updated", {
-          description: `${duration} on #${selectedIssue.id}`,
+        toast.success(t("timeEntry.updated"), {
+          description: t("timeEntry.loggedDescription", {
+            duration,
+            issueId: selectedIssue.id,
+          }),
         });
         props.onSaved({
           issue: selectedIssue,
@@ -408,13 +413,16 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           comments,
           spentOn,
         });
-        toast.success("Time logged successfully", {
-          description: `${duration} on #${selectedIssue.id}`,
+        toast.success(t("timeEntry.logged"), {
+          description: t("timeEntry.loggedDescription", {
+            duration,
+            issueId: selectedIssue.id,
+          }),
         });
         props.onSaved(selectedIssue, entryId, hours, Number(activityId), comments, spentOn, startTime, stopTime);
       }
     } catch (err) {
-      toast.error(isEdit ? "Failed to update time entry" : "Failed to log time", {
+      toast.error(isEdit ? t("timeEntry.updateFailed") : t("timeEntry.logFailed"), {
         description: err instanceof Error ? err.message : String(err),
       });
     } finally {
@@ -433,7 +441,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading">
             <Clock className="w-5 h-5 text-primary" />
-            {isEdit ? "Edit Time Entry" : "Log Time Entry"}
+            {isEdit ? t("timeEntry.titleEdit") : t("timeEntry.titleCreate")}
           </DialogTitle>
         </DialogHeader>
 
@@ -441,7 +449,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           {/* Ticket */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-              Ticket <span className="text-destructive">*</span>
+              {t("timeEntry.ticket")} <span className="text-destructive">*</span>
             </Label>
             {!isTicketSearchMode ? (
               <button
@@ -454,7 +462,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                   <span className="text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0">
                     {selectedIssue.project.name}
                   </span>
-                  <span className="ml-auto text-[10px] text-muted-foreground">Cliquer pour changer</span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">{t("timeEntry.clickToChange")}</span>
                 </div>
                 <TruncatedTicketSubject subject={selectedIssue.subject} />
               </button>
@@ -472,7 +480,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                     value={ticketSearchQuery}
                     onChange={(e) => handleTicketSearchChange(e.target.value)}
                     onKeyDown={handleTicketSearchKeyDown}
-                    placeholder="Search ticket by ID, project, or title..."
+                    placeholder={t("timeEntry.ticketSearchPlaceholder")}
                     role="combobox"
                     aria-autocomplete="list"
                     aria-expanded={ticketSearchResults.length > 0 || isSearchingIssues || Boolean(ticketSearchError)}
@@ -495,7 +503,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                     {isSearchingIssues && ticketSearchResults.length === 0 && (
                       <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Searching Redmine...
+                        {t("timeEntry.searching")}
                       </div>
                     )}
 
@@ -508,7 +516,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
                     {!isSearchingIssues && !ticketSearchError && ticketSearchResults.length === 0 && ticketSearchQuery.trim().length > 0 && (
                       <div className="py-6 text-center text-sm text-muted-foreground">
-                        No tickets found for "{ticketSearchQuery}"
+                        {t("timeEntry.noResults", { query: ticketSearchQuery })}
                       </div>
                     )}
 
@@ -532,7 +540,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           {/* Date */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-              Date <span className="text-destructive">*</span>
+              {t("timeEntry.date")} <span className="text-destructive">*</span>
             </Label>
             <Input
               type="date"
@@ -546,7 +554,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-                Start <span className="text-destructive">*</span>
+                {t("timeEntry.start")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -558,7 +566,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-                End <span className="text-destructive">*</span>
+                {t("timeEntry.end")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -570,7 +578,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-                Duration <span className="text-destructive">*</span>
+                {t("timeEntry.duration")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 type="time"
@@ -584,17 +592,17 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           {/* Activity */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-              Activity <span className="text-destructive">*</span>
+              {t("timeEntry.activity")} <span className="text-destructive">*</span>
             </Label>
             {isLoadingActivities ? (
               <div className="flex items-center gap-2 h-9 px-3 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Loading activities...
+                {t("timeEntry.loadingActivities")}
               </div>
             ) : (
               <Select value={activityId} onValueChange={setActivityId}>
                 <SelectTrigger className={`bg-muted border-border ${!activityId ? "text-muted-foreground/70" : "text-foreground"}`}>
-                  <SelectValue placeholder="Select an activity" />
+                  <SelectValue placeholder={t("timeEntry.selectActivity")} />
                 </SelectTrigger>
                 <SelectContent>
                   {activities.map((a: RedmineActivity) => (
@@ -610,11 +618,11 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           {/* Comment */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
-              Comment
+              {t("timeEntry.comment")}
             </Label>
             <textarea
               rows={3}
-              placeholder="Describe what you worked on..."
+              placeholder={t("timeEntry.commentPlaceholder")}
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
@@ -638,10 +646,10 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                     </Button>
                   </PopoverTrigger>
                 </TooltipTrigger>
-                <TooltipContent>Supprimer cette entrée</TooltipContent>
+                <TooltipContent>{t("timeEntry.deleteTooltip")}</TooltipContent>
               </Tooltip>
               <PopoverContent side="top" align="start" className="w-auto p-3">
-                <p className="text-sm font-medium mb-3">Supprimer cette entrée ?</p>
+                <p className="text-sm font-medium mb-3">{t("timeEntry.deleteConfirmTitle")}</p>
                 <div className="flex gap-2">
                   <Button
                     variant="destructive"
@@ -652,11 +660,11 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                       setIsDeleting(true);
                       try {
                         await deleteTimeEntry(props.session.redmineEntryId!);
-                        toast.success("Time entry deleted");
+                        toast.success(t("timeEntry.deleteSuccess"));
                         props.onDeleted?.(props.session.id);
                         onClose();
                       } catch (err) {
-                        toast.error("Failed to delete", {
+                        toast.error(t("timeEntry.deleteFailed"), {
                           description: err instanceof Error ? err.message : String(err),
                         });
                       } finally {
@@ -666,10 +674,10 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                     }}
                   >
                     {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    Confirmer
+                    {t("timeEntry.confirm")}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} disabled={isDeleting}>
-                    Annuler
+                    {t("timeEntry.discard")}
                   </Button>
                 </div>
               </PopoverContent>
@@ -680,7 +688,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} disabled={isSaving || isDeleting}>
-              { isEdit ? "Cancel" : "Discard time"}
+              { isEdit ? t("timeEntry.discard") : t("timeEntry.discardTime")}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -688,7 +696,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             >
               {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSaving ? "Saving..." : isEdit ? "Update" : "Log Time"}
+              {isSaving ? t("timeEntry.saving") : isEdit ? t("timeEntry.update") : t("timeEntry.logTime")}
             </Button>
           </div>
         </DialogFooter>

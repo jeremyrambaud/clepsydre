@@ -55,6 +55,7 @@ export interface WorkSession {
 export interface UserSettings {
   redmine_url: string;
   api_key: string;
+  language: "en" | "fr";
   default_activity_id: number | null;
   default_comment: string;
   express_entry: boolean;

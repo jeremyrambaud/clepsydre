@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { UserAttentionType, getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
@@ -49,6 +50,7 @@ function formatIdleDuration(seconds: number): string {
 }
 
 export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled, externalStopRequested, onExternalStopHandled }: TimerViewProps) {
+  const { t } = useTranslation();
   const { setSelectedIssue, addSession, selectedIssue } = useIssueStore();
   const settings = useSettingsStore((s) => s.settings);
   const loadSessions = useIssueStore((s) => s.loadSessions);
@@ -158,11 +160,14 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
             stoppedAt
           )
         );
-        toast.success("Time logged successfully", {
-          description: `${formatTimeDisplay(seconds)} on #${selectedIssue.id}`,
+        toast.success(t("timerView.timeLoggedSuccess"), {
+          description: t("timerView.loggedDescription", {
+            duration: formatTimeDisplay(seconds),
+            issueId: selectedIssue.id,
+          }),
         });
       } catch (err) {
-        toast.error("Failed to log time", {
+        toast.error(t("timerView.failedLogTime"), {
           description: err instanceof Error ? err.message : String(err),
         });
       }
@@ -229,7 +234,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
         setSelectedIssue(issue);
         timer.start();
       } catch (err) {
-        toast.error("Failed to start new ticket", {
+        toast.error(t("timerView.failedStartNewTicket"), {
           description: err instanceof Error ? err.message : String(err),
         });
       }
@@ -531,14 +536,16 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       }}>
         <DialogContent className="bg-card border-border sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Inactivity detected</DialogTitle>
+            <DialogTitle>{t("timerView.idleTitle")}</DialogTitle>
             <DialogDescription>
-              You were inactive for {formatIdleDuration(idleDecisionSeconds ?? 0)}. Choose how to handle this period.
+              {t("timerView.idleDescription", {
+                duration: formatIdleDuration(idleDecisionSeconds ?? 0),
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:flex-col sm:gap-2">
             <Button type="button" variant="secondary" className="w-full" onClick={handleIdleKeepAll}>
-              Continue without changes
+              {t("timerView.idleContinueWithoutChanges")}
             </Button>
             <Button
               type="button"
@@ -546,14 +553,14 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
               className="w-full"
               onClick={() => { void handleIdleSubtractAndStop(false); }}
             >
-              Subtract idle time and stop
+              {t("timerView.idleSubtractAndStop")}
             </Button>
             <Button
               type="button"
               className="w-full"
               onClick={() => { void handleIdleSubtractAndStop(true); }}
             >
-              Subtract and continue
+              {t("timerView.idleSubtractAndContinue")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { invoke } from "@tauri-apps/api/core";
 import type { UserSettings, RedmineActivity } from "@/types";
 import { fetchActivities } from "@/lib/redmine";
+import { detectInitialLanguage } from "@/i18n";
 import { useIssueStore } from "./useIssueStore";
 import { mockActivities } from "@/lib/mockData";
 
@@ -23,6 +24,7 @@ interface SettingsState {
 const defaultSettings: UserSettings = {
   redmine_url: "",
   api_key: "",
+  language: detectInitialLanguage(),
   default_activity_id: null,
   default_comment: "",
   express_entry: false,

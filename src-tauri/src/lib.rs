@@ -192,6 +192,11 @@ fn set_minimize_to_tray(
 }
 
 #[tauri::command]
+fn get_system_locale() -> Option<String> {
+    sys_locale::get_locale()
+}
+
+#[tauri::command]
 async fn check_for_updates(
     app: tauri::AppHandle,
     channel: Option<String>,
@@ -398,6 +403,7 @@ pub fn run() {
             integration::integration_respond,
             set_tray_timer_label,
             set_minimize_to_tray,
+            get_system_locale,
             check_for_updates,
             install_pending_update,
         ])

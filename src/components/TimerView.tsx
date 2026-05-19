@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTimer } from "@/hooks/useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
-import { logTimeEntry, fetchIssue } from "@/lib/redmine";
+import { logTimeEntry, fetchIssue, fetchLatestIssueComment } from "@/lib/redmine";
 import { toast } from "sonner";
 import type { RedmineIssue, WorkSession } from "@/types";
 
@@ -68,6 +68,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualIssue, setManualIssue] = useState(selectedIssue);
   const [manualAnchorTime, setManualAnchorTime] = useState<Date>(new Date());
+  const [activeCommentDraft, setActiveCommentDraft] = useState("");
+  const draftCommentRequestRef = useRef(0);
+  const skipNextIssuePrefillRef = useRef(false);
+  const pendingSwitchIssueRef = useRef<RedmineIssue | null>(null);
+  const pendingSwitchCommentRef = useRef("");
   const [idleDecisionSeconds, setIdleDecisionSeconds] = useState<number | null>(null);
   const idleStartedAtMsRef = useRef<number | null>(null);
   const keepRunningAfterCreateSaveRef = useRef(false);
@@ -79,10 +84,86 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const clearActiveIssue = useCallback(() => {
     setSelectedIssue(null);
     setStoppedIssue(null);
+    setActiveCommentDraft("");
     timer.reset();
   }, [setSelectedIssue, timer]);
 
+  const applyDraftCommentForIssue = useCallback(async (issueId: number | null, fallbackComment = "") => {
+    draftCommentRequestRef.current += 1;
+    const requestId = draftCommentRequestRef.current;
+
+    if (!issueId) {
+      setActiveCommentDraft("");
+      return;
+    }
+
+    if (!settings.prefill_last_comment_on_timer_start) {
+      setActiveCommentDraft("");
+      return;
+    }
+
+    try {
+      const latestComment = await fetchLatestIssueComment(issueId);
+      if (requestId !== draftCommentRequestRef.current) return;
+      setActiveCommentDraft((latestComment ?? fallbackComment).trim());
+    } catch {
+      if (requestId !== draftCommentRequestRef.current) return;
+      setActiveCommentDraft(fallbackComment.trim());
+    }
+  }, [settings.prefill_last_comment_on_timer_start]);
+
+  useEffect(() => {
+    if (skipNextIssuePrefillRef.current) {
+      skipNextIssuePrefillRef.current = false;
+      return;
+    }
+    void applyDraftCommentForIssue(selectedIssue?.id ?? null);
+  }, [applyDraftCommentForIssue, selectedIssue?.id]);
+
+  const handlePendingIssueSwitch = useCallback(() => {
+    const nextIssue = pendingSwitchIssueRef.current;
+    if (!nextIssue) return false;
+
+    pendingSwitchIssueRef.current = null;
+    const pendingComment = pendingSwitchCommentRef.current;
+    pendingSwitchCommentRef.current = "";
+
+    // Cancel in-flight comment fetches before switching context.
+    draftCommentRequestRef.current += 1;
+
+    if (settings.prefill_last_comment_on_timer_start) {
+      setActiveCommentDraft(pendingComment);
+      skipNextIssuePrefillRef.current = true;
+    } else {
+      setActiveCommentDraft("");
+    }
+
+    setSelectedIssue(nextIssue);
+    timer.start();
+    return true;
+  }, [setSelectedIssue, settings.prefill_last_comment_on_timer_start, timer]);
+
   function handleSelectFromSession(session: WorkSession) {
+    if (timer.isRunning && selectedIssue && selectedIssue.id !== session.issue.id) {
+      pendingSwitchIssueRef.current = session.issue;
+      pendingSwitchCommentRef.current = session.comments.trim();
+      void finalizeStopFlow(undefined, {
+        keepRunningAfterCreateSave: false,
+        forceCreateModal: true,
+      });
+      return;
+    }
+
+    if (settings.prefill_last_comment_on_timer_start) {
+      // Cancel in-flight fetches and trust the clicked timeline entry comment.
+      draftCommentRequestRef.current += 1;
+      setActiveCommentDraft(session.comments.trim());
+
+      if (selectedIssue?.id !== session.issue.id) {
+        skipNextIssuePrefillRef.current = true;
+      }
+    }
+
     if (selectedIssue?.id !== session.issue.id) {
       setSelectedIssue(session.issue);
     }
@@ -123,7 +204,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
   const finalizeStopFlow = useCallback(async (
     secondsOverride?: number,
-    options?: { keepRunningAfterCreateSave?: boolean; stoppedAtOverride?: Date }
+    options?: { keepRunningAfterCreateSave?: boolean; stoppedAtOverride?: Date; forceCreateModal?: boolean }
   ) => {
     const seconds = Math.max(0, Math.floor(secondsOverride ?? timer.elapsedSeconds));
     if (seconds === 0 || !selectedIssue) {
@@ -136,16 +217,17 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     const stoppedAt = options?.stoppedAtOverride ?? new Date();
     const startedAt = timer.startTime ?? new Date(stoppedAt.getTime() - seconds * 1000);
 
-    if (settings.express_entry) {
+    if (settings.express_entry && !options?.forceCreateModal) {
       timer.stop();
       const hours = Math.round((seconds / 3600) * 100) / 100;
       const spentOn = stoppedAt.toISOString().split("T")[0];
+      const commentToLog = activeCommentDraft.trim() || settings.default_comment;
       try {
         const entryId = await logTimeEntry({
           issueId: selectedIssue.id,
           hours,
           activityId: settings.default_activity_id ?? 0,
-          comments: settings.default_comment,
+          comments: commentToLog,
           spentOn,
         });
         addSession(
@@ -153,7 +235,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
             selectedIssue,
             hours,
             settings.default_activity_id ?? 0,
-            settings.default_comment,
+            commentToLog,
             spentOn,
             entryId,
             startedAt,
@@ -171,6 +253,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           description: err instanceof Error ? err.message : String(err),
         });
       }
+      void applyDraftCommentForIssue(selectedIssue.id, commentToLog);
       timer.reset();
     } else {
       keepRunningAfterCreateSaveRef.current = options?.keepRunningAfterCreateSave ?? false;
@@ -180,12 +263,19 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       timer.stop();
       setCreateModalOpen(true);
     }
-  }, [addSession, selectedIssue, settings, timer]);
+  }, [activeCommentDraft, addSession, applyDraftCommentForIssue, selectedIssue, settings, timer]);
 
   const handleStop = useCallback(async () => {
     keepRunningAfterCreateSaveRef.current = false;
     await finalizeStopFlow();
   }, [finalizeStopFlow]);
+
+  const handleResetActiveTicket = useCallback(() => {
+    timer.reset();
+    if (!settings.prefill_last_comment_on_timer_start) {
+      setActiveCommentDraft("");
+    }
+  }, [settings.prefill_last_comment_on_timer_start, timer]);
 
   const handleClearActiveIssue = useCallback(async () => {
     if (!selectedIssue) return;
@@ -405,6 +495,12 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       return;
     }
 
+    if (handlePendingIssueSwitch()) {
+      return;
+    }
+
+    void applyDraftCommentForIssue(issue.id, comments);
+
     if (keepRunningAfterCreateSaveRef.current) {
       keepRunningAfterCreateSaveRef.current = false;
       return;
@@ -462,9 +558,12 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
         <SearchBar onManualEntry={handleOpenManualEntryForIssue} />
         <ActiveTicketSection
           timer={timer}
+          onReset={handleResetActiveTicket}
           onStop={handleStop}
           onClearIssue={() => { void handleClearActiveIssue(); }}
           onManualEntry={handleOpenManualEntry}
+          commentDraft={activeCommentDraft}
+          onCommentDraftChange={setActiveCommentDraft}
         />
       </div>
       <div className="pt-2 lg:flex-1 lg:min-h-0">
@@ -481,22 +580,37 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onClose={() => {
             keepRunningAfterCreateSaveRef.current = false;
             setCreateModalOpen(false);
+            const issueId = stoppedIssue?.id ?? useIssueStore.getState().selectedIssue?.id ?? null;
 
             if (clearIssueAfterCreateFlowRef.current) {
               clearIssueAfterCreateFlowRef.current = false;
               setSelectedIssue(null);
               setStoppedIssue(null);
+              setActiveCommentDraft("");
+              return;
+            }
+
+            if (handlePendingIssueSwitch()) {
+              return;
             }
 
             if (!timer.isRunning) {
               timer.reset();
             }
+
+            if (settings.prefill_last_comment_on_timer_start) {
+              return;
+            }
+
+            void applyDraftCommentForIssue(issueId);
           }}
           onSaved={handleCreateSaved}
           issue={stoppedIssue}
           elapsedSeconds={stoppedSeconds}
           startedAt={formatHHMM(stoppedStartTime ?? new Date())}
           stoppedAt={formatHHMM(stoppedAtTime ?? new Date())}
+          initialComment={activeCommentDraft.trim() || undefined}
+          onDraftCommentChange={setActiveCommentDraft}
         />
       )}
 

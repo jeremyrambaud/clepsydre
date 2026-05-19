@@ -199,6 +199,20 @@ export function SettingsView() {
             </p>
           )}
 
+          <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+            <div>
+              <p className="text-sm font-medium text-foreground">{t("settings.prefillLastComment")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.prefillLastCommentHint")}</p>
+            </div>
+            <Switch
+              checked={draft.prefill_last_comment_on_timer_start}
+              onCheckedChange={(checked) =>
+                setDraft({ ...draft, prefill_last_comment_on_timer_start: checked })
+              }
+              className="data-[state=checked]:bg-primary"
+            />
+          </div>
+
           {/* Default Activity */}
           <div className="space-y-2">
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">

@@ -625,16 +625,21 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         <DialogFooter className="flex items-center sm:justify-between gap-2">
           {isEdit ? (
             <Popover open={confirmDelete} onOpenChange={setConfirmDelete}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 mr-auto h-9 w-9"
-                  disabled={isSaving}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </PopoverTrigger>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10 mr-auto h-9 w-9"
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Supprimer cette entrée</TooltipContent>
+              </Tooltip>
               <PopoverContent side="top" align="start" className="w-auto p-3">
                 <p className="text-sm font-medium mb-3">Supprimer cette entrée ?</p>
                 <div className="flex gap-2">

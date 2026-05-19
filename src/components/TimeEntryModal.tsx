@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Clock, Loader2, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useId } from "react";
+import { Clock, Loader2, Trash2, Search, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,9 +24,12 @@ import {
 } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store";
-import { logTimeEntry, updateTimeEntry, deleteTimeEntry, fetchActivities } from "@/lib/redmine";
+import { logTimeEntry, updateTimeEntry, deleteTimeEntry, fetchActivities, searchIssues } from "@/lib/redmine";
+import { SearchResultItem } from "./SearchResultItem";
 import { toast } from "sonner";
 import type { RedmineIssue, RedmineActivity, WorkSession } from "@/types";
+
+const DEBOUNCE_MS = 350;
 
 interface BaseModalProps {
   open: boolean;
@@ -39,13 +42,13 @@ interface CreateModalProps extends BaseModalProps {
   elapsedSeconds: number;
   startedAt: string;
   stoppedAt: string;
-  onSaved: (entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) => void;
+  onSaved: (issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) => void;
 }
 
 interface EditModalProps extends BaseModalProps {
   mode: "edit";
   session: WorkSession;
-  onSaved: (updates: Pick<WorkSession, "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) => void;
+  onSaved: (updates: Pick<WorkSession, "issue" | "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) => void;
   onDeleted?: (sessionId: string) => void;
 }
 
@@ -161,12 +164,54 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   const [comments, setComments] = useState(defaults.comments);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSearchingIssues, setIsSearchingIssues] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [lastEdited, setLastEdited] = useState<"duration" | "range">("duration");
+  const [selectedIssue, setSelectedIssue] = useState(issue);
+  const [isTicketSearchMode, setIsTicketSearchMode] = useState(false);
+  const [ticketSearchQuery, setTicketSearchQuery] = useState("");
+  const [ticketSearchResults, setTicketSearchResults] = useState<RedmineIssue[]>([]);
+  const [ticketSearchError, setTicketSearchError] = useState<string | null>(null);
+  const [activeTicketIndex, setActiveTicketIndex] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ticketSearchWrapperRef = useRef<HTMLDivElement>(null);
+  const ticketSearchListboxId = useId();
+
+  const getTicketOptionId = useCallback((issueId: number, index: number) => {
+    return `ticket-search-result-${issueId}-${index}`;
+  }, []);
+
+  const searchRedmineTickets = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setTicketSearchResults([]);
+      setTicketSearchError(null);
+      return;
+    }
+
+    setIsSearchingIssues(true);
+    setTicketSearchError(null);
+
+    try {
+      const issues = await searchIssues(query);
+      setTicketSearchResults(issues);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+      setTicketSearchError(msg);
+      setTicketSearchResults([]);
+    } finally {
+      setIsSearchingIssues(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (open) {
+      setSelectedIssue(issue);
+      setIsTicketSearchMode(false);
+      setTicketSearchQuery("");
+      setTicketSearchResults([]);
+      setTicketSearchError(null);
+      setActiveTicketIndex(-1);
       setDuration(defaults.duration);
       setSpentOn(defaults.date);
       setStartTime(defaults.start);
@@ -188,6 +233,110 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         .finally(() => setIsLoadingActivities(false));
     }
   }, [open, activities.length, setActivities]);
+
+  useEffect(() => {
+    if (!isTicketSearchMode) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      if (ticketSearchWrapperRef.current && !ticketSearchWrapperRef.current.contains(e.target as Node)) {
+        setIsTicketSearchMode(false);
+        setTicketSearchQuery("");
+        setTicketSearchResults([]);
+        setTicketSearchError(null);
+        setActiveTicketIndex(-1);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isTicketSearchMode]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ticketSearchResults.length === 0) {
+      setActiveTicketIndex(-1);
+      return;
+    }
+
+    setActiveTicketIndex((current) => {
+      if (current < 0) return 0;
+      return Math.min(current, ticketSearchResults.length - 1);
+    });
+  }, [ticketSearchResults]);
+
+  useEffect(() => {
+    if (!isTicketSearchMode || activeTicketIndex < 0 || activeTicketIndex >= ticketSearchResults.length) return;
+    const optionId = getTicketOptionId(ticketSearchResults[activeTicketIndex].id, activeTicketIndex);
+    const option = document.getElementById(optionId);
+    option?.scrollIntoView({ block: "nearest" });
+  }, [activeTicketIndex, getTicketOptionId, isTicketSearchMode, ticketSearchResults]);
+
+  function handleTicketSearchChange(value: string) {
+    setTicketSearchQuery(value);
+    setActiveTicketIndex(-1);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void searchRedmineTickets(value);
+    }, DEBOUNCE_MS);
+  }
+
+  function handleTicketSelect(issue: RedmineIssue) {
+    setSelectedIssue(issue);
+    setIsTicketSearchMode(false);
+    setTicketSearchQuery("");
+    setTicketSearchResults([]);
+    setTicketSearchError(null);
+    setActiveTicketIndex(-1);
+  }
+
+  function handleTicketSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (ticketSearchResults.length === 0) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsTicketSearchMode(false);
+        setTicketSearchQuery("");
+        setTicketSearchError(null);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveTicketIndex((current) => (current + 1) % ticketSearchResults.length);
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveTicketIndex((current) => (current <= 0 ? ticketSearchResults.length - 1 : current - 1));
+      return;
+    }
+
+    if (e.key === "Enter") {
+      if (activeTicketIndex >= 0 && activeTicketIndex < ticketSearchResults.length) {
+        e.preventDefault();
+        handleTicketSelect(ticketSearchResults[activeTicketIndex]);
+      }
+      return;
+    }
+
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setIsTicketSearchMode(false);
+      setTicketSearchQuery("");
+      setTicketSearchResults([]);
+      setTicketSearchError(null);
+      setActiveTicketIndex(-1);
+    }
+  }
 
   function handleDurationChange(value: string) {
     setDuration(value);
@@ -214,6 +363,11 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   }
 
   async function handleSubmit() {
+    if (isTicketSearchMode) {
+      toast.error("Please select a ticket from the list or cancel the search");
+      return;
+    }
+
     if (!activityId) {
       toast.error("Please select an activity");
       return;
@@ -228,15 +382,17 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     try {
       if (isEdit) {
         await updateTimeEntry(props.session.redmineEntryId!, {
+          issueId: selectedIssue.id,
           hours,
           activityId: Number(activityId),
           comments,
           spentOn,
         });
         toast.success("Time entry updated", {
-          description: `${duration} on #${issue.id}`,
+          description: `${duration} on #${selectedIssue.id}`,
         });
         props.onSaved({
+          issue: selectedIssue,
           hours,
           activityId: Number(activityId),
           comments,
@@ -246,16 +402,16 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         });
       } else {
         const entryId = await logTimeEntry({
-          issueId: issue.id,
+          issueId: selectedIssue.id,
           hours,
           activityId: Number(activityId),
           comments,
           spentOn,
         });
         toast.success("Time logged successfully", {
-          description: `${duration} on #${issue.id}`,
+          description: `${duration} on #${selectedIssue.id}`,
         });
-        props.onSaved(entryId, hours, Number(activityId), comments, spentOn, startTime, stopTime);
+        props.onSaved(selectedIssue, entryId, hours, Number(activityId), comments, spentOn, startTime, stopTime);
       }
     } catch (err) {
       toast.error(isEdit ? "Failed to update time entry" : "Failed to log time", {
@@ -281,17 +437,98 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="rounded-lg bg-muted p-3 mb-2 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-2 mb-1 min-w-0">
-            <span className="text-xs font-semibold text-primary shrink-0">#{issue.id}</span>
-            <span className="text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0">
-              {issue.project.name}
-            </span>
-          </div>
-          <TruncatedTicketSubject subject={issue.subject} />
-        </div>
-
         <div className="grid gap-4">
+          {/* Ticket */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
+              Ticket <span className="text-destructive">*</span>
+            </Label>
+            {!isTicketSearchMode ? (
+              <button
+                type="button"
+                onClick={() => setIsTicketSearchMode(true)}
+                className="w-full rounded-lg bg-muted border border-border p-3 text-left hover:bg-surface-high transition-colors"
+              >
+                <div className="flex items-center gap-2 mb-1 min-w-0">
+                  <span className="text-xs font-semibold text-primary shrink-0">#{selectedIssue.id}</span>
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0">
+                    {selectedIssue.project.name}
+                  </span>
+                  <span className="ml-auto text-[10px] text-muted-foreground">Cliquer pour changer</span>
+                </div>
+                <TruncatedTicketSubject subject={selectedIssue.subject} />
+              </button>
+            ) : (
+              <div ref={ticketSearchWrapperRef} className="relative">
+                <div className="relative">
+                  {isSearchingIssues ? (
+                    <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary animate-spin" />
+                  ) : (
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  )}
+                  <Input
+                    type="text"
+                    autoFocus
+                    value={ticketSearchQuery}
+                    onChange={(e) => handleTicketSearchChange(e.target.value)}
+                    onKeyDown={handleTicketSearchKeyDown}
+                    placeholder="Search ticket by ID, project, or title..."
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={ticketSearchResults.length > 0 || isSearchingIssues || Boolean(ticketSearchError)}
+                    aria-controls={ticketSearchListboxId}
+                    aria-activedescendant={
+                      activeTicketIndex >= 0 && activeTicketIndex < ticketSearchResults.length
+                        ? getTicketOptionId(ticketSearchResults[activeTicketIndex].id, activeTicketIndex)
+                        : undefined
+                    }
+                    className="bg-muted border-border pl-9"
+                  />
+                </div>
+
+                {(ticketSearchResults.length > 0 || isSearchingIssues || Boolean(ticketSearchError) || ticketSearchQuery.trim().length > 0) && (
+                  <div
+                    id={ticketSearchListboxId}
+                    role="listbox"
+                    className="absolute top-full left-0 right-0 mt-2 rounded-xl bg-surface-container border border-border shadow-xl overflow-hidden z-50 max-h-72 overflow-y-auto"
+                  >
+                    {isSearchingIssues && ticketSearchResults.length === 0 && (
+                      <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Searching Redmine...
+                      </div>
+                    )}
+
+                    {ticketSearchError && (
+                      <div className="flex items-center gap-2 px-4 py-4 text-sm text-destructive">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{ticketSearchError}</span>
+                      </div>
+                    )}
+
+                    {!isSearchingIssues && !ticketSearchError && ticketSearchResults.length === 0 && ticketSearchQuery.trim().length > 0 && (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        No tickets found for "{ticketSearchQuery}"
+                      </div>
+                    )}
+
+                    {ticketSearchResults.map((resultIssue, index) => (
+                      <SearchResultItem
+                        key={resultIssue.id}
+                        id={getTicketOptionId(resultIssue.id, index)}
+                        issue={resultIssue}
+                        showProgress={false}
+                        isActive={index === activeTicketIndex}
+                        onSelect={handleTicketSelect}
+                        onHover={() => setActiveTicketIndex(index)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Date */}
           <div className="space-y-2">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
@@ -442,7 +679,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isSaving || isDeleting || !activityId}
+              disabled={isSaving || isDeleting || !activityId || isTicketSearchMode}
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             >
               {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}

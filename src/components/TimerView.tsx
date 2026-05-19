@@ -19,7 +19,7 @@ import { useTimer } from "@/hooks/useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
 import { logTimeEntry, fetchIssue } from "@/lib/redmine";
 import { toast } from "sonner";
-import type { WorkSession } from "@/types";
+import type { RedmineIssue, WorkSession } from "@/types";
 
 interface TimerViewProps {
   timer: ReturnType<typeof useTimer>;
@@ -81,7 +81,18 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   }, [setSelectedIssue, timer]);
 
   function handleSelectFromSession(session: WorkSession) {
-    setSelectedIssue(session.issue);
+    if (selectedIssue?.id !== session.issue.id) {
+      setSelectedIssue(session.issue);
+    }
+
+    if (!timer.isRunning) {
+      timer.start();
+      return;
+    }
+
+    if (timer.isPaused) {
+      timer.resume();
+    }
   }
 
   function buildSession(
@@ -195,6 +206,13 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setManualAnchorTime(now);
     setManualModalOpen(true);
   }, [selectedIssue]);
+
+  const handleOpenManualEntryForIssue = useCallback((issue: RedmineIssue) => {
+    const now = new Date();
+    setManualIssue(issue);
+    setManualAnchorTime(now);
+    setManualModalOpen(true);
+  }, []);
 
   useEffect(() => {
     if (pendingSwitchIssueId == null) return;
@@ -358,10 +376,10 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     [finalizeStopFlow, idleDecisionSeconds, selectedIssue, settings.express_entry, timer]
   );
 
-  function handleCreateSaved(entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
-    if (stoppedIssue) {
+  function handleCreateSaved(issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+    if (issue) {
       const session = buildSession(
-        stoppedIssue,
+        issue,
         hours,
         activityId,
         comments,
@@ -396,7 +414,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setEditModalOpen(true);
   }
 
-  function handleEditSaved(updates: Pick<WorkSession, "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) {
+  function handleEditSaved(updates: Pick<WorkSession, "issue" | "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) {
     if (editingSession) {
       useIssueStore.getState().updateSession(editingSession.id, updates);
     }
@@ -411,10 +429,10 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setEditingSession(null);
   }
 
-  function handleManualSaved(entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
-    if (manualIssue) {
+  function handleManualSaved(issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+    if (issue) {
       const session = buildSession(
-        manualIssue,
+        issue,
         hours,
         activityId,
         comments,
@@ -436,7 +454,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   return (
     <div className="flex flex-col max-w-6xl mx-auto lg:h-full lg:min-h-0">
       <div className="shrink-0 space-y-6 pb-4">
-        <SearchBar />
+        <SearchBar onManualEntry={handleOpenManualEntryForIssue} />
         <ActiveTicketSection
           timer={timer}
           onStop={handleStop}

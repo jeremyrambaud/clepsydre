@@ -216,7 +216,7 @@ export async function logTimeEntry(params: LogTimeParams): Promise<number> {
 
 export async function updateTimeEntry(
   entryId: number,
-  params: Partial<Omit<LogTimeParams, "issueId">>
+  params: Partial<LogTimeParams>
 ): Promise<void> {
   const { url, apiKey } = await getCredentials();
 
@@ -229,6 +229,7 @@ export async function updateTimeEntry(
     danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
     body: JSON.stringify({
       time_entry: {
+        ...(params.issueId != null && { issue_id: params.issueId }),
         ...(params.hours != null && { hours: params.hours }),
         ...(params.activityId != null && { activity_id: params.activityId }),
         ...(params.comments != null && { comments: params.comments }),

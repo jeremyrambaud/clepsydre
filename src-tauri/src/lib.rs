@@ -202,6 +202,13 @@ pub fn run() {
                         .unwrap_or(true);
                     if should_minimize_to_tray {
                         api.prevent_close();
+                        #[cfg(target_os = "macos")]
+                        {
+                            let _ = window
+                                .app_handle()
+                                .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                        }
+                        let _ = window.set_skip_taskbar(true);
                         let _ = window.hide();
                     }
                 }
@@ -237,6 +244,13 @@ pub fn run() {
                     } = event
                     {
                         if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            #[cfg(target_os = "macos")]
+                            {
+                                let _ = tray
+                                    .app_handle()
+                                    .set_activation_policy(tauri::ActivationPolicy::Regular);
+                            }
+                            let _ = window.set_skip_taskbar(false);
                             let _ = window.unminimize();
                             let _ = window.show();
                             let _ = window.set_focus();
@@ -246,6 +260,11 @@ pub fn run() {
                 .on_menu_event(|app, event| {
                     if event.id().as_ref() == "show" {
                         if let Some(window) = app.get_webview_window("main") {
+                            #[cfg(target_os = "macos")]
+                            {
+                                let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+                            }
+                            let _ = window.set_skip_taskbar(false);
                             let _ = window.unminimize();
                             let _ = window.show();
                             let _ = window.set_focus();

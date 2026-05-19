@@ -9,6 +9,7 @@ pub struct TimerStatePayload {
     pub issue_id: Option<u32>,
     pub issue_subject: Option<String>,
     pub elapsed_seconds: u32,
+    pub start_time_ms: Option<i64>,
     pub redmine_url: Option<String>,
 }
 
@@ -20,6 +21,7 @@ pub fn default_timer_state() -> SharedTimerState {
         issue_id: None,
         issue_subject: None,
         elapsed_seconds: 0,
+        start_time_ms: None,
         redmine_url: None,
     }))
 }
@@ -42,6 +44,7 @@ pub fn update_timer_state(
     issue_id: Option<u32>,
     issue_subject: Option<String>,
     elapsed_seconds: u32,
+    start_time_ms: Option<i64>,
     redmine_url: Option<String>,
     state: State<'_, SharedTimerState>,
 ) -> Result<(), String> {
@@ -50,6 +53,7 @@ pub fn update_timer_state(
     timer.issue_id = issue_id;
     timer.issue_subject = issue_subject;
     timer.elapsed_seconds = elapsed_seconds;
+    timer.start_time_ms = start_time_ms;
     timer.redmine_url = redmine_url;
     Ok(())
 }

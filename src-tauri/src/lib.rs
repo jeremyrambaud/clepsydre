@@ -3,13 +3,16 @@ mod commands;
 mod migrations;
 
 use commands::{idle, integration, keyring};
+use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
+    LogicalSize, Manager, PhysicalPosition, Position, Size,
     menu::MenuBuilder,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    Window, WindowEvent,
 };
 use tauri_plugin_updater::{Update, UpdaterExt};
 use url::Url;
@@ -18,6 +21,82 @@ use url::Url;
 struct UpdateMetadata {
     version: String,
     notes: Option<String>,
+}
+
+const MIN_WINDOW_WIDTH: f64 = 390.0;
+const MIN_WINDOW_HEIGHT: f64 = 700.0;
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct StoredWindowState {
+    width: u32,
+    height: u32,
+    x: i32,
+    y: i32,
+}
+
+fn window_state_file_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|dir| dir.join("window-state.json"))
+}
+
+fn save_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>, state: &StoredWindowState) {
+    let Some(path) = window_state_file_path(app) else {
+        return;
+    };
+
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+
+    if let Ok(serialized) = serde_json::to_string(state) {
+        let _ = fs::write(path, serialized);
+    }
+}
+
+fn load_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<StoredWindowState> {
+    let path = window_state_file_path(app)?;
+    let raw = fs::read_to_string(path).ok()?;
+    serde_json::from_str(&raw).ok()
+}
+
+fn persist_window_state<R: tauri::Runtime>(window: &Window<R>) {
+    if window.is_maximized().unwrap_or(false) || window.is_fullscreen().unwrap_or(false) {
+        return;
+    }
+
+    let Ok(size) = window.outer_size() else {
+        return;
+    };
+    let Ok(position) = window.outer_position() else {
+        return;
+    };
+
+    let state = StoredWindowState {
+        width: size.width,
+        height: size.height,
+        x: position.x,
+        y: position.y,
+    };
+
+    save_window_state(&window.app_handle(), &state);
+}
+
+fn restore_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    let Some(saved) = load_window_state(app) else {
+        return;
+    };
+
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+
+    let clamped_width = (saved.width as f64).max(MIN_WINDOW_WIDTH);
+    let clamped_height = (saved.height as f64).max(MIN_WINDOW_HEIGHT);
+
+    let _ = window.set_size(Size::Logical(LogicalSize::new(clamped_width, clamped_height)));
+    let _ = window.set_position(Position::Physical(PhysicalPosition::new(saved.x, saved.y)));
 }
 
 fn update_endpoint_for_channel(channel: &str) -> &'static str {
@@ -195,26 +274,41 @@ pub fn run() {
         .on_window_event({
             let minimize_to_tray_state = minimize_to_tray_state.clone();
             move |window, event| {
-                if let WindowEvent::CloseRequested { api, .. } = event {
-                    let should_minimize_to_tray = minimize_to_tray_state
-                        .lock()
-                        .map(|state| *state)
-                        .unwrap_or(true);
-                    if should_minimize_to_tray {
-                        api.prevent_close();
-                        #[cfg(target_os = "macos")]
-                        {
-                            let _ = window
-                                .app_handle()
-                                .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        persist_window_state(window);
+
+                        let should_minimize_to_tray = minimize_to_tray_state
+                            .lock()
+                            .map(|state| *state)
+                            .unwrap_or(true);
+                        if should_minimize_to_tray {
+                            api.prevent_close();
+                            #[cfg(target_os = "macos")]
+                            {
+                                let _ = window
+                                    .app_handle()
+                                    .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                            }
+                            let _ = window.set_skip_taskbar(true);
+                            let _ = window.hide();
                         }
-                        let _ = window.set_skip_taskbar(true);
-                        let _ = window.hide();
                     }
+                    WindowEvent::Moved(_) | WindowEvent::Resized(_) => persist_window_state(window),
+                    _ => {}
                 }
             }
         })
         .setup(move |app| {
+            if let Some(window) = app.handle().get_webview_window("main") {
+                let _ = window.set_min_size(Some(Size::Logical(LogicalSize::new(
+                    MIN_WINDOW_WIDTH,
+                    MIN_WINDOW_HEIGHT,
+                ))));
+            }
+
+            restore_window_state(&app.handle());
+
             idle::spawn_idle_monitor(app.handle().clone(), idle_monitor_state.clone());
             bridge_server::spawn_bridge_server(app.handle().clone(), timer_state.clone());
 

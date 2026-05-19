@@ -102,11 +102,11 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
 
   return (
     <div className="rounded-xl bg-surface-container border-l-4 border-l-tertiary border border-border overflow-hidden">
-      <div className="grid grid-cols-12 gap-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
         {/* Ticket details (cols 1-4) */}
-        <div className="col-span-4 p-6 border-r border-border flex flex-col justify-between">
+        <div className="lg:col-span-4 p-4 sm:p-6 border-b lg:border-b-0 lg:border-r border-border flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
               <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/15 text-primary">
                 {selectedIssue.status.name}
               </span>
@@ -207,9 +207,9 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
         </div>
 
         {/* Timer display (cols 5-9) */}
-        <div className="col-span-5 p-6 flex flex-col items-center justify-center">
+        <div className="lg:col-span-5 p-4 sm:p-6 flex flex-col items-center justify-center">
           {timer.startTime && (
-            <div className="flex items-center gap-1.5 mb-3">
+            <div className="flex items-center gap-1.5 mb-3 flex-wrap justify-center">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
                 Début
@@ -226,30 +226,30 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
                     timer.setStartTime(newStart);
                   }
                 }}
-                className="h-7 w-22 text-center text-sm font-heading tabular-nums bg-surface-highest border-border px-2"
+                className="h-7 w-20 sm:w-22 text-center text-sm font-heading tabular-nums bg-surface-highest border-border px-2"
               />
             </div>
           )}
 
           <div className="flex items-baseline tabular-nums select-none mb-6">
-            <span className="text-7xl font-semibold font-heading text-foreground tracking-tight">
+            <span className="text-5xl sm:text-6xl lg:text-7xl font-semibold font-heading text-foreground tracking-tight">
               {timer.hours}
             </span>
-            <span className="text-5xl font-semibold text-muted-foreground/40 mx-1">:</span>
-            <span className="text-7xl font-semibold font-heading text-foreground tracking-tight">
+            <span className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-muted-foreground/40 mx-1">:</span>
+            <span className="text-5xl sm:text-6xl lg:text-7xl font-semibold font-heading text-foreground tracking-tight">
               {timer.minutes}
             </span>
-            <span className="text-5xl font-semibold text-muted-foreground/40 mx-1">:</span>
-            <span className="text-7xl font-semibold font-heading text-tertiary tracking-tight">
+            <span className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-muted-foreground/40 mx-1">:</span>
+            <span className="text-5xl sm:text-6xl lg:text-7xl font-semibold font-heading text-tertiary tracking-tight">
               {timer.seconds}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Button
               variant="secondary"
               size="icon"
-              className="w-14 h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-surface-highest hover:bg-surface-highest/80"
               onClick={timer.reset}
             >
               <RotateCcw className="w-5 h-5" />
@@ -257,7 +257,7 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
 
             <Button
               size="icon"
-              className={`w-20 h-20 rounded-full ${
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full ${
                 timer.isRunning && !timer.isPaused
                   ? "bg-primary hover:bg-primary/90 text-primary-foreground"
                   : "bg-tertiary hover:bg-tertiary/90 text-on-tertiary"
@@ -273,16 +273,16 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
               }}
             >
               {timer.isRunning && !timer.isPaused ? (
-                <Pause className="w-8 h-8" />
+                <Pause className="w-6 h-6 sm:w-8 sm:h-8" />
               ) : (
-                <Play className="w-8 h-8 ml-1" />
+                <Play className="w-6 h-6 sm:w-8 sm:h-8 ml-1" />
               )}
             </Button>
 
             <Button
               variant="secondary"
               size="icon"
-              className="w-14 h-14 rounded-full bg-error-bg/80 hover:bg-error-bg text-error-text"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-error-bg/80 hover:bg-error-bg text-error-text"
               onClick={onStop ?? timer.stop}
               disabled={!timer.isRunning && !timer.isPaused}
             >
@@ -292,23 +292,23 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicke
         </div>
 
         {/* Totals panel (cols 10-12) */}
-        <div className="col-span-3 bg-surface-low p-6 flex flex-col justify-center gap-4 border-l border-border">
-          <div>
+        <div className="lg:col-span-3 bg-surface-low p-4 sm:p-6 flex flex-row lg:flex-col justify-center gap-4 border-t lg:border-t-0 lg:border-l border-border">
+          <div className="flex-1 min-w-0">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
               Redmine Total
             </span>
-            <p className="text-2xl font-semibold font-heading text-foreground tabular-nums mt-1">
+            <p className="text-xl sm:text-2xl font-semibold font-heading text-foreground tabular-nums mt-1">
               {formatHoursMinutes(totalSpent)}
             </p>
           </div>
 
-          <div className="border-t border-border" />
+          <div className="w-px self-stretch bg-border lg:w-full lg:h-px" />
 
-          <div>
+          <div className="flex-1 min-w-0">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
               Today&apos;s Total
             </span>
-            <p className="text-2xl font-semibold font-heading text-tertiary tabular-nums mt-1">
+            <p className="text-xl sm:text-2xl font-semibold font-heading text-tertiary tabular-nums mt-1">
               {formatHoursMinutes(todayTotalHours)}
             </p>
           </div>

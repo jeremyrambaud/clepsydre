@@ -75,9 +75,9 @@ export function SettingsView() {
   }, []);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-24 md:pb-28">
       {/* Connection Card */}
-      <section className="rounded-xl bg-card border border-border p-6">
+      <section className="rounded-xl bg-card border border-border p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-6">
           <Link className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold font-heading text-foreground">
@@ -85,7 +85,7 @@ export function SettingsView() {
           </h3>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="space-y-2">
             <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
               Redmine Domain URL
@@ -125,7 +125,7 @@ export function SettingsView() {
           <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
             Auto Sync Interval
           </label>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <Input
               type="number"
               min={1}
@@ -145,7 +145,7 @@ export function SettingsView() {
           </div>
         </div>
 
-        <div className="border-t border-border pt-4 flex items-center justify-between">
+        <div className="border-t border-border pt-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
           <span className="text-sm text-muted-foreground">
             Last successful sync: <span className="text-foreground">{syncAgo}</span>
           </span>
@@ -162,9 +162,9 @@ export function SettingsView() {
       </section>
 
       {/* Bento Grid: Automation + System */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         {/* Automation Card (3/5) */}
-        <section className="col-span-3 rounded-xl bg-card border border-border p-6 space-y-5">
+        <section className="xl:col-span-3 rounded-xl bg-card border border-border p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 mb-1">
             <Zap className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold font-heading text-foreground">
@@ -246,7 +246,7 @@ export function SettingsView() {
         </section>
 
         {/* System Card (2/5) */}
-        <section className="col-span-2 rounded-xl bg-card border border-border p-6 space-y-5">
+        <section className="xl:col-span-2 rounded-xl bg-card border border-border p-4 sm:p-6 space-y-5">
           <div className="flex items-center gap-2 mb-1">
             <MonitorCog className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold font-heading text-foreground">
@@ -320,7 +320,7 @@ export function SettingsView() {
       </div>
 
       {/* About & Updates */}
-      <section className="rounded-xl bg-card border border-border p-6">
+      <section className="rounded-xl bg-card border border-border p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <Download className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold font-heading text-foreground">
@@ -328,13 +328,13 @@ export function SettingsView() {
           </h3>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:justify-between">
           <div className="space-y-1">
             <p className="text-sm text-foreground">
               Clepsydre{" "}
               <span className="font-mono text-muted-foreground">v{appVersion || "..."}</span>
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground">Update channel:</span>
               <Select
                 value={draft.update_channel}
@@ -390,25 +390,25 @@ export function SettingsView() {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {(status === "idle" || status === "up-to-date" || status === "error") && (
               <Button
                 variant="secondary"
                 onClick={() => checkForUpdates(draft.update_channel)}
-                className="gap-2"
+                className="gap-2 w-full sm:w-auto"
               >
                 <RefreshCw className="w-4 h-4" />
                 Check for Updates
               </Button>
             )}
             {status === "available" && (
-              <Button onClick={downloadAndInstall} className="gap-2">
+              <Button onClick={downloadAndInstall} className="gap-2 w-full sm:w-auto">
                 <Download className="w-4 h-4" />
                 Download & Install
               </Button>
             )}
             {status === "ready" && (
-              <Button onClick={restartApp} className="gap-2">
+              <Button onClick={restartApp} className="gap-2 w-full sm:w-auto">
                 <RotateCcw className="w-4 h-4" />
                 Restart Now
               </Button>
@@ -417,18 +417,22 @@ export function SettingsView() {
         </div>
       </section>
 
-      {/* Footer Actions */}
-      <div className="flex justify-end gap-3 pt-2">
-        <Button variant="outline" onClick={handleDiscard} disabled={!hasChanges}>
-          Discard Changes
-        </Button>
-        <Button
-          onClick={handleSave}
-          disabled={!hasChanges}
-          className="bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          Save Configuration
-        </Button>
+      {/* Floating actions always visible */}
+      <div className="fixed inset-x-4 bottom-20 md:bottom-6 md:left-[284px] md:right-6 z-40 pointer-events-none">
+        <div className="mx-auto max-w-5xl pointer-events-auto rounded-xl border border-border bg-background/95 backdrop-blur-sm px-3 py-3 shadow-lg">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <Button variant="outline" onClick={handleDiscard} disabled={!hasChanges} className="w-full sm:w-auto">
+              Discard Changes
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
+            >
+              Save Configuration
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -233,8 +233,13 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent showCloseButton={false} className="bg-card border-border sm:max-w-md">
+    <Dialog open={open}>
+      <DialogContent
+        showCloseButton={false}
+        className="bg-card border-border sm:max-w-md"
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onPointerDownOutside={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading">
             <Clock className="w-5 h-5 text-primary" />

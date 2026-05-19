@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { RotateCcw, Pause, Play, Square, Clock, ExternalLink } from "lucide-react";
+import { RotateCcw, Pause, Play, Square, Clock, ExternalLink, X } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,9 +50,10 @@ function TruncatedIssueTitle({ title }: { title: string }) {
 interface ActiveTicketSectionProps {
   timer: ReturnType<typeof useTimer>;
   onStop?: () => void;
+  onClearIssue?: () => void;
 }
 
-export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps) {
+export function ActiveTicketSection({ timer, onStop, onClearIssue }: ActiveTicketSectionProps) {
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
@@ -110,19 +111,36 @@ export function ActiveTicketSection({ timer, onStop }: ActiveTicketSectionProps)
                 {selectedIssue.status.name}
               </span>
               <span className="text-xs text-muted-foreground">#{selectedIssue.id}</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-6 h-6 text-muted-foreground hover:text-foreground"
-                    onClick={() => openUrl(`${redmineUrl.replace(/\/+$/, "")}/issues/${selectedIssue.id}`)}
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Ouvrir dans Redmine</TooltipContent>
-              </Tooltip>
+              <div className="ml-auto flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-6 h-6 text-muted-foreground hover:text-foreground"
+                      onClick={() => openUrl(`${redmineUrl.replace(/\/+$/, "")}/issues/${selectedIssue.id}`)}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ouvrir dans Redmine</TooltipContent>
+                </Tooltip>
+                {onClearIssue && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 text-muted-foreground hover:text-foreground"
+                        onClick={onClearIssue}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Fermer le ticket actif</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
             <TruncatedIssueTitle title={selectedIssue.subject} />
             <span className="text-xs text-muted-foreground uppercase tracking-wide">

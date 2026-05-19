@@ -75,9 +75,33 @@ async function updateCargoTomlVersion(path) {
   await writeFile(path, updated, "utf8");
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function updateCargoLockVersion(path, packageNames) {
+  const raw = await readFile(path, "utf8");
+
+  for (const packageName of packageNames) {
+    const regex = new RegExp(
+      `(\\[\\[package\\]\\]\\nname\\s*=\\s*"${escapeRegex(packageName)}"\\nversion\\s*=\\s*")([^"]+)(")`,
+      "m"
+    );
+
+    if (regex.test(raw)) {
+      const updated = raw.replace(regex, `$1${nextVersion}$3`);
+      await writeFile(path, updated, "utf8");
+      return;
+    }
+  }
+
+  throw new Error(`Unable to find app package entry in ${path}`);
+}
+
 await updateJsonVersion("package.json");
 await updateJsonVersion("src-tauri/tauri.conf.json");
 await updateCargoTomlVersion("src-tauri/Cargo.toml");
+await updateCargoLockVersion("src-tauri/Cargo.lock", ["Clepsydre", "clepsydre"]);
 await updateExtensionManifest("extension/manifest.json");
 await updateExtensionManifestIfExists("extension/manifest.firefox.json");
 await updateExtensionManifest("extension-firefox/manifest.json");

@@ -99,6 +99,28 @@
 @layer base {
     * {
         @apply border-border outline-ring/50;
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(in srgb, var(--secondary) 85%, transparent) transparent;
+    }
+
+    *::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    *::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    *::-webkit-scrollbar-thumb {
+        background-color: color-mix(in srgb, var(--secondary) 90%, transparent);
+        border-radius: 9999px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+        background-color: color-mix(in srgb, var(--primary) 70%, transparent);
     }
 
     button,

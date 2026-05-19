@@ -64,11 +64,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [stoppedAtTime, setStoppedAtTime] = useState<Date | null>(null);
   const [editingSession, setEditingSession] = useState<WorkSession | null>(null);
   const [idleDecisionSeconds, setIdleDecisionSeconds] = useState<number | null>(null);
-  const idleDecisionAnchorMsRef = useRef<number | null>(null);
-  const idleResumeAtMsRef = useRef<number | null>(null);
+  const idleStartedAtMsRef = useRef<number | null>(null);
   const keepRunningAfterCreateSaveRef = useRef(false);
   const pendingSwitchIssueIdRef = useRef<number | null>(null);
   const [stoppedIssue, setStoppedIssue] = useState(selectedIssue);
+  const idleDialogOpen = idleDecisionSeconds !== null;
 
   function handleSelectFromSession(session: WorkSession) {
     setSelectedIssue(session.issue);
@@ -215,6 +215,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       timer.isRunning &&
       !timer.isPaused &&
       !!selectedIssue &&
+      !idleDialogOpen &&
       !createModalOpen &&
       !editModalOpen;
 
@@ -228,7 +229,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   }, [
     createModalOpen,
     editModalOpen,
-    idleDecisionSeconds,
+    idleDialogOpen,
     selectedIssue,
     settings.idle_detection_enabled,
     settings.idle_threshold_minutes,
@@ -237,34 +238,26 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   ]);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    let unlistenReached: (() => void) | undefined;
 
-    void listen<{ idle_seconds: number }>("idle-resume-threshold-exceeded", async (event) => {
+    void listen<{ idle_seconds: number }>("idle-threshold-reached", async (event) => {
       if (!settings.idle_detection_enabled) return;
       if (createModalOpen || editModalOpen) return;
       if (!timer.isRunning || timer.isPaused || !selectedIssue) return;
+      if (idleStartedAtMsRef.current !== null) return;
 
-      idleResumeAtMsRef.current = Date.now();
       await bringAppToFront();
       const nextIdleSeconds = event.payload?.idle_seconds ?? settings.idle_threshold_minutes * 60;
-      if (idleDecisionAnchorMsRef.current === null) {
-        idleDecisionAnchorMsRef.current = Date.now() - nextIdleSeconds * 1000;
-      }
-      const anchoredIdleSeconds = Math.max(
-        nextIdleSeconds,
-        Math.floor((Date.now() - idleDecisionAnchorMsRef.current) / 1000)
-      );
-      setIdleDecisionSeconds(anchoredIdleSeconds);
+      idleStartedAtMsRef.current = Date.now() - nextIdleSeconds * 1000;
+      setIdleDecisionSeconds(nextIdleSeconds);
     }).then((cleanup) => {
-      unlisten = cleanup;
+      unlistenReached = cleanup;
     }).catch((error) => {
-      console.error("Failed to subscribe to idle monitor event:", error);
+      console.error("Failed to subscribe to idle threshold reached event:", error);
     });
 
     return () => {
-      if (unlisten) {
-        unlisten();
-      }
+      if (unlistenReached) unlistenReached();
     };
   }, [
     bringAppToFront,
@@ -279,14 +272,24 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
   useEffect(() => {
     if (idleDecisionSeconds === null) {
-      idleDecisionAnchorMsRef.current = null;
-      idleResumeAtMsRef.current = null;
+      idleStartedAtMsRef.current = null;
     }
   }, [idleDecisionSeconds]);
 
+  useEffect(() => {
+    if (idleDecisionSeconds === null) return;
+
+    const interval = window.setInterval(() => {
+      if (idleStartedAtMsRef.current === null) return;
+      const liveIdleSeconds = Math.max(0, Math.floor((Date.now() - idleStartedAtMsRef.current) / 1000));
+      setIdleDecisionSeconds(liveIdleSeconds);
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [idleDecisionSeconds]);
+
   const handleIdleKeepAll = useCallback(() => {
-    idleDecisionAnchorMsRef.current = null;
-    idleResumeAtMsRef.current = null;
+    idleStartedAtMsRef.current = null;
     setIdleDecisionSeconds(null);
   }, []);
 
@@ -294,17 +297,15 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     async (restart: boolean) => {
       if (idleDecisionSeconds === null) return;
 
-      const resumeAtMs = idleResumeAtMsRef.current;
-      const referenceMs = resumeAtMs ?? Date.now();
-      const stopAtMs = Math.max(0, referenceMs - idleDecisionSeconds * 1000);
-      const stopAt = new Date(stopAtMs);
+      const referenceMs = Date.now();
+      const idleStartMs = idleStartedAtMsRef.current ?? Math.max(0, referenceMs - idleDecisionSeconds * 1000);
+      const stopAt = new Date(idleStartMs);
 
       const adjustedSeconds = timer.startTime
-        ? Math.max(0, Math.floor((stopAtMs - timer.startTime.getTime()) / 1000))
+        ? Math.max(0, Math.floor((idleStartMs - timer.startTime.getTime()) / 1000))
         : Math.max(0, timer.elapsedSeconds - idleDecisionSeconds);
 
-      idleDecisionAnchorMsRef.current = null;
-      idleResumeAtMsRef.current = null;
+      idleStartedAtMsRef.current = null;
       setIdleDecisionSeconds(null);
       await finalizeStopFlow(adjustedSeconds, {
         keepRunningAfterCreateSave: restart && !settings.express_entry,
@@ -412,8 +413,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
       <Dialog open={idleDecisionSeconds !== null} onOpenChange={(open) => {
         if (!open) {
-          idleDecisionAnchorMsRef.current = null;
-          idleResumeAtMsRef.current = null;
+          idleStartedAtMsRef.current = null;
           setIdleDecisionSeconds(null);
         }
       }}>

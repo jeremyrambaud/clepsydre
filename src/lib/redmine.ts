@@ -11,6 +11,66 @@ interface RedmineSingleIssueResponse {
   issue: RedmineIssue;
 }
 
+const SEARCH_REQUEST_LIMIT = 50;
+const SEARCH_RESULT_LIMIT = 30;
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchIssuesBySubject(url: string, apiKey: string, subjectQuery: string): Promise<RedmineIssue[]> {
+  const params = new URLSearchParams({
+    subject: `~${subjectQuery}`,
+    limit: String(SEARCH_REQUEST_LIMIT),
+    status_id: "*",
+    sort: "updated_on:desc",
+  });
+
+  const resp = await fetch(`${url}/issues.json?${params}`, {
+    headers: { "X-Redmine-API-Key": apiKey },
+    danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(`Redmine API error (${resp.status}): ${body}`);
+  }
+
+  const data = (await resp.json()) as RedmineIssuesResponse;
+  return data.issues;
+}
+
+function scoreIssue(issue: RedmineIssue, normalizedQuery: string, terms: string[]): number {
+  const subject = normalizeSearchText(issue.subject ?? "");
+  const project = normalizeSearchText(issue.project?.name ?? "");
+  const issueId = String(issue.id);
+  const haystack = `${issueId} ${project} ${subject}`;
+
+  let score = 0;
+
+  if (issueId === normalizedQuery) score += 500;
+  if (subject.includes(normalizedQuery)) score += 220;
+  if (project.includes(normalizedQuery)) score += 150;
+
+  const termsInSubject = terms.filter((term) => subject.includes(term)).length;
+  const termsInProject = terms.filter((term) => project.includes(term)).length;
+  const totalTermMatches = terms.filter((term) => haystack.includes(term)).length;
+
+  if (terms.length > 0 && totalTermMatches === terms.length) {
+    score += 180;
+  }
+
+  score += termsInSubject * 35;
+  score += termsInProject * 25;
+
+  return score;
+}
+
 async function getCredentials(): Promise<{ url: string; apiKey: string }> {
   const { redmine_url, api_key } = useSettingsStore.getState().settings;
   let apiKey = api_key;
@@ -50,26 +110,54 @@ export async function searchIssues(query: string): Promise<RedmineIssue[]> {
     }
   }
 
-  // Full-text search on subject
-  const params = new URLSearchParams({
-    "subject": `~${trimmed}`,
-    "limit": "15",
-    "status_id": "open",
-    "sort": "updated_on:desc",
-  });
+  const normalizedQuery = normalizeSearchText(trimmed);
+  const terms = normalizedQuery.split(" ").filter(Boolean);
 
-  const resp = await fetch(`${url}/issues.json?${params}`, {
-    headers: { "X-Redmine-API-Key": apiKey },
-    danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
-  });
+  const subjectQueries = Array.from(
+    new Set([
+      trimmed,
+      ...terms.filter((term) => term.length >= 2),
+    ])
+  ).slice(0, 5);
 
-  if (!resp.ok) {
-    const body = await resp.text();
-    throw new Error(`Redmine API error (${resp.status}): ${body}`);
+  const settled = await Promise.allSettled(
+    subjectQueries.map((subjectQuery) => fetchIssuesBySubject(url, apiKey, subjectQuery))
+  );
+
+  const mergedById = new Map<number, RedmineIssue>();
+  let firstError: string | null = null;
+
+  for (const result of settled) {
+    if (result.status === "fulfilled") {
+      for (const issue of result.value) {
+        if (!mergedById.has(issue.id)) {
+          mergedById.set(issue.id, issue);
+        }
+      }
+      continue;
+    }
+
+    if (!firstError) {
+      firstError = result.reason instanceof Error ? result.reason.message : String(result.reason);
+    }
   }
 
-  const data = (await resp.json()) as RedmineIssuesResponse;
-  return data.issues;
+  if (mergedById.size === 0) {
+    if (firstError) throw new Error(firstError);
+    return [];
+  }
+
+  const ranked = [...mergedById.values()]
+    .map((issue) => ({ issue, score: scoreIssue(issue, normalizedQuery, terms) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.issue.updated_on.localeCompare(a.issue.updated_on);
+    })
+    .slice(0, SEARCH_RESULT_LIMIT)
+    .map(({ issue }) => issue);
+
+  return ranked;
 }
 
 export async function fetchIssue(issueId: number): Promise<RedmineIssue> {

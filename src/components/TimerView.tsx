@@ -98,7 +98,10 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     };
   }
 
-  const finalizeStopFlow = useCallback(async (secondsOverride?: number, options?: { keepRunningAfterCreateSave?: boolean }) => {
+  const finalizeStopFlow = useCallback(async (
+    secondsOverride?: number,
+    options?: { keepRunningAfterCreateSave?: boolean; stoppedAtOverride?: Date }
+  ) => {
     const seconds = Math.max(0, Math.floor(secondsOverride ?? timer.elapsedSeconds));
     if (seconds === 0 || !selectedIssue) {
       timer.stop();
@@ -107,7 +110,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
     setStoppedIssue(selectedIssue);
 
-    const stoppedAt = new Date();
+    const stoppedAt = options?.stoppedAtOverride ?? new Date();
     const startedAt = timer.startTime ?? new Date(stoppedAt.getTime() - seconds * 1000);
 
     if (settings.express_entry) {
@@ -291,21 +294,26 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     async (restart: boolean) => {
       if (idleDecisionSeconds === null) return;
 
-      const adjustedSeconds = Math.max(0, timer.elapsedSeconds - idleDecisionSeconds);
       const resumeAtMs = idleResumeAtMsRef.current;
-      timer.subtractElapsed(idleDecisionSeconds);
+      const referenceMs = resumeAtMs ?? Date.now();
+      const stopAtMs = Math.max(0, referenceMs - idleDecisionSeconds * 1000);
+      const stopAt = new Date(stopAtMs);
+
+      const adjustedSeconds = timer.startTime
+        ? Math.max(0, Math.floor((stopAtMs - timer.startTime.getTime()) / 1000))
+        : Math.max(0, timer.elapsedSeconds - idleDecisionSeconds);
+
       idleDecisionAnchorMsRef.current = null;
       idleResumeAtMsRef.current = null;
       setIdleDecisionSeconds(null);
       await finalizeStopFlow(adjustedSeconds, {
         keepRunningAfterCreateSave: restart && !settings.express_entry,
+        stoppedAtOverride: stopAt,
       });
 
       if (restart && selectedIssue) {
         timer.start();
-        if (resumeAtMs !== null) {
-          timer.setStartTime(new Date(resumeAtMs));
-        }
+        timer.setStartTime(new Date(referenceMs));
       }
     },
     [finalizeStopFlow, idleDecisionSeconds, selectedIssue, settings.express_entry, timer]

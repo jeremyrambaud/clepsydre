@@ -58,6 +58,7 @@ export interface UserSettings {
   language: "en" | "fr";
   default_activity_id: number | null;
   default_comment: string;
+  prefill_last_comment_on_timer_start: boolean;
   express_entry: boolean;
   idle_detection_enabled: boolean;
   launch_at_startup: boolean;

@@ -27,6 +27,7 @@ const defaultSettings: UserSettings = {
   language: detectInitialLanguage(),
   default_activity_id: null,
   default_comment: "",
+  prefill_last_comment_on_timer_start: false,
   express_entry: false,
   idle_detection_enabled: true,
   launch_at_startup: true,

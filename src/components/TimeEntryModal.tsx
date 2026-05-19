@@ -43,6 +43,8 @@ interface CreateModalProps extends BaseModalProps {
   elapsedSeconds: number;
   startedAt: string;
   stoppedAt: string;
+  initialComment?: string;
+  onDraftCommentChange?: (comment: string) => void;
   onSaved: (issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) => void;
 }
 
@@ -153,7 +155,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         duration: secondsToTimeValue(props.elapsedSeconds),
         date: formatDate(new Date()),
         activity: settings.default_activity_id?.toString() ?? "",
-        comments: settings.default_comment,
+        comments: props.initialComment ?? settings.default_comment,
         start: props.startedAt ?? formatHHMM(new Date()),
         stop: props.stoppedAt ?? formatHHMM(new Date()),
       };
@@ -624,7 +626,13 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               rows={3}
               placeholder={t("timeEntry.commentPlaceholder")}
               value={comments}
-              onChange={(e) => setComments(e.target.value)}
+              onChange={(e) => {
+                const nextComment = e.target.value;
+                setComments(nextComment);
+                if (!isEdit) {
+                  props.onDraftCommentChange?.(nextComment);
+                }
+              }}
               className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
             />
           </div>

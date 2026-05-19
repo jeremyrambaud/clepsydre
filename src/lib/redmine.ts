@@ -315,6 +315,33 @@ export async function fetchIssueTodayLoggedHours(issueId: number): Promise<numbe
   return total;
 }
 
+export async function fetchLatestIssueComment(issueId: number): Promise<string | null> {
+  const { url, apiKey } = await getCredentials();
+
+  const params = new URLSearchParams({
+    user_id: "me",
+    issue_id: String(issueId),
+    limit: "20",
+    sort: "spent_on:desc",
+  });
+
+  const resp = await fetch(`${url}/time_entries.json?${params}`, {
+    headers: { "X-Redmine-API-Key": apiKey },
+    danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+  });
+
+  if (!resp.ok) {
+    throw new Error(i18n.t("redmine.fetchEntriesFailed", { status: resp.status }));
+  }
+
+  const data = (await resp.json()) as { time_entries: RedmineTimeEntry[] };
+  const latestWithComment = data.time_entries.find(
+    (entry) => entry.comments?.trim().length > 0
+  );
+
+  return latestWithComment?.comments.trim() ?? null;
+}
+
 export interface FetchTimeEntriesResult {
   sessions: WorkSession[];
   totalCount: number;

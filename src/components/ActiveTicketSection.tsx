@@ -51,22 +51,74 @@ function TruncatedIssueTitle({ title }: { title: string }) {
 
 interface ActiveTicketSectionProps {
   timer: ReturnType<typeof useTimer>;
+  onReset?: () => void;
   onStop?: () => void;
   onClearIssue?: () => void;
   onManualEntry?: () => void;
+  commentDraft?: string;
+  onCommentDraftChange?: (comment: string) => void;
 }
 
-export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry }: ActiveTicketSectionProps) {
+function TruncatedDraftComment({ comment }: { comment: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [isTruncated, setIsTruncated] = useState(false);
+
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setIsTruncated(el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth);
+  }, []);
+
+  useEffect(() => {
+    check();
+    const observer = new ResizeObserver(check);
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [check, comment]);
+
+  const paragraph = (
+    <p ref={ref} className="text-xs text-muted-foreground/90 line-clamp-2 whitespace-pre-line break-words">
+      {comment}
+    </p>
+  );
+
+  if (!isTruncated) return paragraph;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{paragraph}</TooltipTrigger>
+      <TooltipContent className="max-w-sm whitespace-pre-wrap">{comment}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onManualEntry, commentDraft = "", onCommentDraftChange }: ActiveTicketSectionProps) {
   const { t } = useTranslation();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [isCommentEditorOpen, setIsCommentEditorOpen] = useState(false);
+  const [commentEditorValue, setCommentEditorValue] = useState("");
+
+  const trimmedDraftComment = commentDraft.trim();
+
+  useEffect(() => {
+    if (!isCommentEditorOpen) return;
+    setCommentEditorValue(commentDraft);
+  }, [commentDraft, isCommentEditorOpen]);
 
   const handleResetWithConfirm = useCallback(() => {
-    timer.reset();
+    (onReset ?? timer.reset)();
+    setCommentEditorValue("");
+    setIsCommentEditorOpen(false);
     setConfirmReset(false);
-  }, [timer]);
+  }, [onReset, timer]);
+
+  const handleSaveDraftComment = useCallback(() => {
+    onCommentDraftChange?.(commentEditorValue.trim());
+    setIsCommentEditorOpen(false);
+  }, [commentEditorValue, onCommentDraftChange]);
 
   useEffect(() => {
     let mounted = true;
@@ -158,8 +210,50 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
             </span>
           </div>
 
-          {totalSpent > 0 && (
-            <div className="mt-4">
+          <div className="mt-4 space-y-3">
+            <div className="rounded-md border border-border bg-surface-low p-2.5">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
+                  {t("activeTicket.draftCommentLabel")}
+                </span>
+                {onCommentDraftChange && (
+                  <Popover open={isCommentEditorOpen} onOpenChange={setIsCommentEditorOpen}>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]">
+                        {trimmedDraftComment ? t("activeTicket.draftCommentEdit") : t("activeTicket.draftCommentAdd")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="bottom" align="start" className="w-[320px] max-w-[calc(100vw-2rem)] p-3">
+                      <p className="mb-2 text-sm font-medium">{t("activeTicket.draftCommentEditorTitle")}</p>
+                      <textarea
+                        rows={4}
+                        value={commentEditorValue}
+                        onChange={(event) => setCommentEditorValue(event.target.value)}
+                        placeholder={t("activeTicket.draftCommentPlaceholder")}
+                        className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
+                      />
+                      <div className="mt-3 flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setIsCommentEditorOpen(false)}>
+                          {t("timeEntry.discard")}
+                        </Button>
+                        <Button size="sm" onClick={handleSaveDraftComment}>
+                          {t("timeEntry.confirm")}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+
+              {trimmedDraftComment ? (
+                <TruncatedDraftComment comment={trimmedDraftComment} />
+              ) : (
+                <p className="text-xs text-muted-foreground/80">{t("activeTicket.draftCommentEmpty")}</p>
+              )}
+            </div>
+
+            {totalSpent > 0 && (
+              <div>
               <div className="h-2 rounded-full bg-surface-highest overflow-hidden flex">
                 {estimated === 0 ? (
                   <div
@@ -212,8 +306,9 @@ export function ActiveTicketSection({ timer, onStop, onClearIssue, onManualEntry
                   {estimated > 0 ? `${formatHoursMinutes(estimated)} ${t("activeTicket.estimateShort")}` : t("activeTicket.noEstimate")}
                 </span>
               </div>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Timer display (cols 5-9) */}

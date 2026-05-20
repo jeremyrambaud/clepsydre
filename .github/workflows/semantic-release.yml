@@ -38,4 +38,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
           GH_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
+          SEMANTIC_RELEASE_DRAFT: ${{ github.ref_name == 'beta' && 'true' || 'false' }}
+          SEMANTIC_RELEASE_CHANNEL_LABEL: ${{ github.ref_name == 'beta' && 'Beta' || 'Stable' }}
         run: bun run release:ci

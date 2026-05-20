@@ -1,4 +1,7 @@
 /** @type {import("semantic-release").GlobalConfig} */
+const isBetaDraftRelease = process.env.SEMANTIC_RELEASE_DRAFT === "true";
+const releaseChannelLabel = process.env.SEMANTIC_RELEASE_CHANNEL_LABEL === "Beta" ? "Beta" : "Stable";
+
 export default {
   branches: [
     "main",
@@ -27,6 +30,17 @@ export default {
           "extension-firefox/manifest.json",
         ],
         message: "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}",
+      },
+    ],
+    [
+      "@semantic-release/github",
+      {
+        // Assets are published by the tag-based release workflow (tauri-action),
+        // so semantic-release only publishes notes/metadata on GitHub Releases.
+        assets: [],
+        addReleases: "bottom",
+        draftRelease: isBetaDraftRelease,
+        releaseNameTemplate: `Clepsydre ${releaseChannelLabel} v<%= nextRelease.version %>`,
       },
     ],
   ],

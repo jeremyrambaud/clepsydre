@@ -4,19 +4,21 @@ import { Search, Loader2, AlertCircle } from "lucide-react";
 import { useIssueStore } from "@/store";
 import { searchIssues } from "@/lib/redmine";
 import { SearchResultItem } from "./SearchResultItem";
-import type { RedmineIssue } from "@/types";
+import type { RedmineIssue, IssueSearchResult } from "@/types";
 
 const DEBOUNCE_MS = 350;
 
 interface SearchBarProps {
   onManualEntry?: (issue: RedmineIssue) => void;
+  onMatchedCommentSelected?: (comment: string, issueId: number) => void;
+  onIssueSelected?: (issue: RedmineIssue, matchedComment?: string) => void;
 }
 
-export function SearchBar({ onManualEntry }: SearchBarProps) {
+export function SearchBar({ onManualEntry, onMatchedCommentSelected, onIssueSelected }: SearchBarProps) {
   const { t } = useTranslation();
   const { searchQuery, setSearchQuery, setSelectedIssue } = useIssueStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [results, setResults] = useState<RedmineIssue[]>([]);
+  const [results, setResults] = useState<IssueSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -75,8 +77,17 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
     };
   }, []);
 
-  function handleSelect(issue: RedmineIssue) {
-    setSelectedIssue(issue);
+  function handleSelect(issue: RedmineIssue, matchedCommentFullText?: string) {
+    const matchedComment = matchedCommentFullText?.trim();
+    if (matchedComment) {
+      onMatchedCommentSelected?.(matchedComment, issue.id);
+    }
+
+    if (onIssueSelected) {
+      onIssueSelected(issue, matchedComment);
+    } else {
+      setSelectedIssue(issue);
+    }
     setSearchQuery("");
     setResults([]);
     setActiveIndex(-1);
@@ -105,7 +116,7 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
 
   useEffect(() => {
     if (!isOpen || activeIndex < 0 || activeIndex >= results.length) return;
-    const optionId = getOptionId(results[activeIndex].id, activeIndex);
+    const optionId = getOptionId(results[activeIndex].issue.id, activeIndex);
     const option = document.getElementById(optionId);
     option?.scrollIntoView({ block: "nearest" });
   }, [activeIndex, getOptionId, isOpen, results]);
@@ -141,7 +152,7 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
     if (e.key === "Enter") {
       if (activeIndex >= 0 && activeIndex < results.length) {
         e.preventDefault();
-        handleSelect(results[activeIndex]);
+        handleSelect(results[activeIndex].issue, results[activeIndex].matchedCommentFullText);
       }
       return;
     }
@@ -177,7 +188,7 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
           aria-controls={showDropdown ? listboxId : undefined}
           aria-activedescendant={
             showDropdown && activeIndex >= 0 && activeIndex < results.length
-              ? getOptionId(results[activeIndex].id, activeIndex)
+              ? getOptionId(results[activeIndex].issue.id, activeIndex)
               : undefined
           }
           className="w-full h-12 pl-12 pr-4 rounded-xl bg-surface-high border border-border text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-colors"
@@ -212,9 +223,12 @@ export function SearchBar({ onManualEntry }: SearchBarProps) {
 
           {results.map((issue, index) => (
             <SearchResultItem
-              key={issue.id}
-              id={getOptionId(issue.id, index)}
-              issue={issue}
+              key={issue.issue.id}
+              id={getOptionId(issue.issue.id, index)}
+              issue={issue.issue}
+              searchQuery={searchQuery}
+              matchedCommentSnippet={issue.matchedCommentSnippet}
+              matchedCommentFullText={issue.matchedCommentFullText}
               isActive={index === activeIndex}
               onSelect={handleSelect}
               onManualEntry={onManualEntry ? handleManualEntry : undefined}

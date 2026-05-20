@@ -34,6 +34,7 @@ const defaultSettings: UserSettings = {
   minimize_to_tray: true,
   update_channel: "stable",
   check_interval_minutes: 5,
+  search_in_time_comments: false,
   idle_threshold_minutes: 15,
   theme: "dark",
 };

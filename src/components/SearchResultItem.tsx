@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Clock3 } from "lucide-react";
 import type { RedmineIssue } from "@/types";
@@ -9,9 +10,12 @@ const COMPACT_RESULT_WIDTH_PX = 620;
 interface SearchResultItemProps {
   id: string;
   issue: RedmineIssue;
+  searchQuery?: string;
+  matchedCommentSnippet?: string;
+  matchedCommentFullText?: string;
   isActive?: boolean;
   showProgress?: boolean;
-  onSelect: (issue: RedmineIssue) => void;
+  onSelect: (issue: RedmineIssue, matchedCommentFullText?: string) => void;
   onManualEntry?: (issue: RedmineIssue) => void;
   onHover?: () => void;
 }
@@ -22,9 +26,58 @@ function formatHoursMinutes(hours: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m`;
 }
 
-function TruncatedIssueSubject({ subject }: { subject: string }) {
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getHighlightTerms(searchQuery?: string): string[] {
+  if (!searchQuery) return [];
+
+  const normalized = searchQuery.trim().replace(/^#/, "");
+  if (!normalized) return [];
+
+  return Array.from(new Set(normalized.split(/\s+/).filter(Boolean)))
+    .sort((a, b) => b.length - a.length);
+}
+
+function renderHighlightedText(text: string, terms: string[]): ReactNode {
+  if (terms.length === 0) return text;
+
+  const regex = new RegExp(`(${terms.map(escapeRegExp).join("|")})`, "gi");
+  const parts = text.split(regex);
+  const lowerTerms = new Set(terms.map((term) => term.toLowerCase()));
+
+  return parts.map((part, index) => {
+    if (!part) return null;
+
+    if (lowerTerms.has(part.toLowerCase())) {
+      return (
+        <span key={`${part}-${index}`} className="rounded-sm bg-primary/20 text-foreground px-0.5">
+          {part}
+        </span>
+      );
+    }
+
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
+}
+
+function TruncatedText({
+  text,
+  searchQuery,
+  tooltipText,
+  className,
+  tooltipClassName,
+}: {
+  text: string;
+  searchQuery?: string;
+  tooltipText?: string;
+  className?: string;
+  tooltipClassName?: string;
+}) {
   const ref = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
+  const highlightTerms = getHighlightTerms(searchQuery);
 
   const check = useCallback(() => {
     const el = ref.current;
@@ -37,28 +90,42 @@ function TruncatedIssueSubject({ subject }: { subject: string }) {
     const observer = new ResizeObserver(check);
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [check, subject]);
+  }, [check, text]);
 
-  const text = (
-    <span ref={ref} className="text-sm text-foreground truncate flex-1 min-w-0">
-      {subject}
+  const truncatedNode = (
+    <span ref={ref} className={`block max-w-full truncate ${className ?? ""}`}>
+      {renderHighlightedText(text, highlightTerms)}
     </span>
   );
 
-  if (!isTruncated) return text;
+  const shouldShowTooltip = isTruncated || (tooltipText != null && tooltipText !== text);
+
+  if (!shouldShowTooltip) return truncatedNode;
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{text}</TooltipTrigger>
-      <TooltipContent className="max-w-sm break-words">{subject}</TooltipContent>
+      <TooltipTrigger asChild>{truncatedNode}</TooltipTrigger>
+      <TooltipContent className={tooltipClassName ?? "max-w-sm break-words"}>{tooltipText ?? text}</TooltipContent>
     </Tooltip>
   );
 }
 
-export function SearchResultItem({ id, issue, isActive = false, showProgress = true, onSelect, onManualEntry, onHover }: SearchResultItemProps) {
+export function SearchResultItem({
+  id,
+  issue,
+  searchQuery,
+  matchedCommentSnippet,
+  matchedCommentFullText,
+  isActive = false,
+  showProgress = true,
+  onSelect,
+  onManualEntry,
+  onHover,
+}: SearchResultItemProps) {
   const { t } = useTranslation();
   const rowRef = useRef<HTMLDivElement>(null);
   const [isCompact, setIsCompact] = useState(false);
+  const highlightTerms = useMemo(() => getHighlightTerms(searchQuery), [searchQuery]);
 
   const checkCompact = useCallback(() => {
     const el = rowRef.current;
@@ -88,21 +155,32 @@ export function SearchResultItem({ id, issue, isActive = false, showProgress = t
       role="option"
       aria-selected={isActive}
       className={`w-full flex gap-3 px-4 py-3 transition-colors text-left cursor-pointer ${isCompact ? "items-start" : "items-center"} ${isActive ? "bg-surface-high" : "hover:bg-surface-high"}`}
-      onClick={() => onSelect(issue)}
+      onClick={() => onSelect(issue, matchedCommentFullText)}
       onMouseEnter={onHover}
     >
-      <div className={`flex min-w-0 flex-1 ${isCompact ? "flex-col gap-1" : "flex-row items-center gap-3"}`}>
+      <div className={`flex min-w-0 flex-1 overflow-hidden ${isCompact ? "flex-col gap-1" : "flex-row items-center gap-3"}`}>
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">
-            #{issue.id}
+            #{renderHighlightedText(String(issue.id), highlightTerms)}
           </span>
 
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide bg-surface-highest px-2 py-0.5 rounded truncate">
-            {issue.project.name}
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide bg-surface-highest px-2 py-0.5 rounded truncate max-w-[180px]">
+            {renderHighlightedText(issue.project.name, highlightTerms)}
           </span>
         </div>
 
-        <TruncatedIssueSubject subject={issue.subject} />
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <TruncatedText text={issue.subject} searchQuery={searchQuery} className="text-sm text-foreground" />
+          {matchedCommentSnippet && (
+            <TruncatedText
+              text={matchedCommentSnippet}
+              searchQuery={searchQuery}
+              tooltipText={matchedCommentFullText}
+              className="mt-1 text-xs text-muted-foreground"
+              tooltipClassName="max-w-md break-words whitespace-pre-wrap"
+            />
+          )}
+        </div>
       </div>
 
       {showProgress && !isCompact && (

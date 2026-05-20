@@ -28,7 +28,7 @@ import { useSettingsStore } from "@/store";
 import { logTimeEntry, updateTimeEntry, deleteTimeEntry, fetchActivities, searchIssues } from "@/lib/redmine";
 import { SearchResultItem } from "./SearchResultItem";
 import { toast } from "sonner";
-import type { RedmineIssue, RedmineActivity, WorkSession } from "@/types";
+import type { RedmineIssue, RedmineActivity, WorkSession, IssueSearchResult } from "@/types";
 
 const DEBOUNCE_MS = 350;
 
@@ -175,7 +175,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   const [selectedIssue, setSelectedIssue] = useState(issue);
   const [isTicketSearchMode, setIsTicketSearchMode] = useState(false);
   const [ticketSearchQuery, setTicketSearchQuery] = useState("");
-  const [ticketSearchResults, setTicketSearchResults] = useState<RedmineIssue[]>([]);
+  const [ticketSearchResults, setTicketSearchResults] = useState<IssueSearchResult[]>([]);
   const [ticketSearchError, setTicketSearchError] = useState<string | null>(null);
   const [activeTicketIndex, setActiveTicketIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -277,7 +277,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
   useEffect(() => {
     if (!isTicketSearchMode || activeTicketIndex < 0 || activeTicketIndex >= ticketSearchResults.length) return;
-    const optionId = getTicketOptionId(ticketSearchResults[activeTicketIndex].id, activeTicketIndex);
+    const optionId = getTicketOptionId(ticketSearchResults[activeTicketIndex].issue.id, activeTicketIndex);
     const option = document.getElementById(optionId);
     option?.scrollIntoView({ block: "nearest" });
   }, [activeTicketIndex, getTicketOptionId, isTicketSearchMode, ticketSearchResults]);
@@ -292,7 +292,12 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     }, DEBOUNCE_MS);
   }
 
-  function handleTicketSelect(issue: RedmineIssue) {
+  function handleTicketSelect(issue: RedmineIssue, matchedCommentFullText?: string) {
+    const matchedComment = matchedCommentFullText?.trim();
+    if (matchedComment) {
+      setComments(matchedComment);
+    }
+
     setSelectedIssue(issue);
     setIsTicketSearchMode(false);
     setTicketSearchQuery("");
@@ -327,7 +332,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     if (e.key === "Enter") {
       if (activeTicketIndex >= 0 && activeTicketIndex < ticketSearchResults.length) {
         e.preventDefault();
-        handleTicketSelect(ticketSearchResults[activeTicketIndex]);
+        handleTicketSelect(ticketSearchResults[activeTicketIndex].issue);
       }
       return;
     }
@@ -489,7 +494,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                     aria-controls={ticketSearchListboxId}
                     aria-activedescendant={
                       activeTicketIndex >= 0 && activeTicketIndex < ticketSearchResults.length
-                        ? getTicketOptionId(ticketSearchResults[activeTicketIndex].id, activeTicketIndex)
+                        ? getTicketOptionId(ticketSearchResults[activeTicketIndex].issue.id, activeTicketIndex)
                         : undefined
                     }
                     className="bg-muted border-border pl-9"
@@ -524,9 +529,12 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
                     {ticketSearchResults.map((resultIssue, index) => (
                       <SearchResultItem
-                        key={resultIssue.id}
-                        id={getTicketOptionId(resultIssue.id, index)}
-                        issue={resultIssue}
+                        key={resultIssue.issue.id}
+                        id={getTicketOptionId(resultIssue.issue.id, index)}
+                        issue={resultIssue.issue}
+                        searchQuery={ticketSearchQuery}
+                        matchedCommentSnippet={resultIssue.matchedCommentSnippet}
+                        matchedCommentFullText={resultIssue.matchedCommentFullText}
                         showProgress={false}
                         isActive={index === activeTicketIndex}
                         onSelect={handleTicketSelect}

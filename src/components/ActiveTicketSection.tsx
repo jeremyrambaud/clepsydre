@@ -158,6 +158,7 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
   const totalSpent = (selectedIssue.spent_hours ?? 0) + todayHours;
 
   const estimated = selectedIssue.estimated_hours ?? 0;
+  const remaining = estimated > 0 ? estimated - totalSpent : 0;
   const isOver = estimated > 0 && totalSpent > estimated;
   const estimatedPct = isOver ? (estimated / totalSpent) * 100 : (estimated > 0 ? Math.min((totalSpent / estimated) * 100, 100) : 0);
   const overPct = isOver ? ((totalSpent - estimated) / totalSpent) * 100 : 0;
@@ -297,13 +298,13 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
                   />
                 )}
               </div>
-              <div className="flex justify-between mt-1.5">
-                <span className={`text-xs ${estimated === 0 || isOver ? "text-destructive" : "text-muted-foreground"}`}>
-                  {formatHoursMinutes(totalSpent)} {t("activeTicket.spent")}
-                  {isOver && ` (+${formatHoursMinutes(totalSpent - estimated)})`}
-                </span>
+              <div className="flex justify-between items-center mt-1.5 gap-2">
                 <span className="text-xs text-muted-foreground">
                   {estimated > 0 ? `${formatHoursMinutes(estimated)} ${t("activeTicket.estimateShort")}` : t("activeTicket.noEstimate")}
+                </span>
+                <span className={`text-xs ${estimated === 0 || isOver ? "text-destructive" : "text-tertiary"}`}>
+                  {isOver || estimated === 0 && `${t("activeTicket.overByLabel", { value: formatHoursMinutes(totalSpent - estimated) })}`}
+                  {estimated > 0 && !isOver && `${t("activeTicket.remainingLabel", { value: formatHoursMinutes(remaining) })}`}
                 </span>
               </div>
               </div>

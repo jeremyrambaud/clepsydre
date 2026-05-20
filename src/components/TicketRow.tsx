@@ -135,10 +135,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
                 {estimated === 0 ? formatHoursMinutes(spent) : formatHoursMinutes(Math.abs(remaining))}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-muted-foreground">
-                {estimated > 0 ? t("ticketRow.estimate", { value: formatHoursMinutes(estimated) }) : t("ticketRow.noEstimateShort")}
-              </span>
+            <div className="flex items-center gap-2 mb-1">
               <div className="flex-1 h-1 rounded-full bg-surface-highest overflow-hidden flex">
                 {estimated === 0 ? (
                   <div
@@ -182,6 +179,14 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
                   />
                 )}
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-muted-foreground">
+                {estimated > 0 ? t("ticketRow.estimate", { value: formatHoursMinutes(estimated) }) : t("ticketRow.noEstimateShort")}
+              </span>
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                {t("ticketRow.totalAtEntry", { value: formatHoursMinutes(spent) })}
+              </span>
             </div>
           </div>
 

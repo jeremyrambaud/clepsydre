@@ -42,6 +42,7 @@ function TruncatedText({ children, className, tooltipClassName }: { children: st
 interface TicketRowProps {
   session: WorkSession;
   cumulativeSpent?: number;
+  isActiveTimelineEntry?: boolean;
   onSelect: (session: WorkSession) => void;
   onEdit: (session: WorkSession) => void;
   isLast?: boolean;
@@ -53,7 +54,7 @@ function formatHoursMinutes(hours: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m`;
 }
 
-export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast = false }: TicketRowProps) {
+export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = false, onSelect, onEdit, isLast = false }: TicketRowProps) {
   const { t } = useTranslation();
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const { issue } = session;
@@ -86,7 +87,11 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
       </div>
 
       {/* Card */}
-      <div className="flex-1 rounded-xl bg-surface-low border border-border px-3 sm:px-5 py-3.5 hover:bg-surface-low/80 transition-colors">
+      <div className={`flex-1 rounded-xl border px-3 sm:px-5 py-3.5 transition-colors ${
+        isActiveTimelineEntry
+          ? "bg-tertiary/10 border-tertiary/40"
+          : "bg-surface-low border-border hover:bg-surface-low/80"
+      }`}>
         <div className="grid grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-12 items-center gap-3 lg:gap-4">
           {/* Info: cols 1-5 */}
           <div className="col-span-2 lg:col-span-5 min-w-0">
@@ -94,6 +99,11 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
               <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">
                 #{issue.id}
               </span>
+              {isActiveTimelineEntry && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-tertiary">
+                  {t("ticketRow.inProgress")}
+                </span>
+              )}
               <TruncatedText className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-surface-highest px-2 py-0.5 rounded min-w-0">
                 {issue.project.name}
               </TruncatedText>
@@ -192,7 +202,7 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
 
           {/* Actions: cols 11-12 */}
           <div className="lg:col-span-2 flex items-center justify-end gap-1">
-            {session.redmineEntryId && (
+            {!isActiveTimelineEntry && session.redmineEntryId && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -208,32 +218,36 @@ export function TicketRow({ session, cumulativeSpent, onSelect, onEdit, isLast =
               </Tooltip>
             )}
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                  onClick={() => openUrl(`${redmineUrl.replace(/\/+$/, "")}/issues/${issue.id}`)}
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("ticketRow.openInRedmine")}</TooltipContent>
-            </Tooltip>
+            {!isActiveTimelineEntry && (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => openUrl(`${redmineUrl.replace(/\/+$/, "")}/issues/${issue.id}`)}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("ticketRow.openInRedmine")}</TooltipContent>
+                </Tooltip>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  className="h-8 px-3 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
-                  onClick={() => onSelect(session)}
-                >
-                  <Play className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("ticketRow.startTimer")}</TooltipContent>
-            </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      className="h-8 px-3 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
+                      onClick={() => onSelect(session)}
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("ticketRow.startTimer")}</TooltipContent>
+                </Tooltip>
+              </>
+            )}
           </div>
         </div>
       </div>

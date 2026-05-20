@@ -98,6 +98,11 @@
   line-height: 1;
 }
 
+.clepsydre-btn svg,
+.clepsydre-btn svg * {
+  fill: currentColor !important;
+}
+
 .clepsydre-btn:hover:not(:disabled) {
   transform: scale(1.05);
 }
@@ -114,6 +119,7 @@
 
 .clepsydre-btn--start:hover:not(:disabled) {
   background: #f0fdf4;
+  color: #16a34a !important;
 }
 
 .clepsydre-btn--stop {
@@ -123,4 +129,5 @@
 
 .clepsydre-btn--stop:hover:not(:disabled) {
   background: #fef2f2;
+  color: #dc2626 !important;
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { UserAttentionType, getCurrentWindow } from "@tauri-apps/api/window";
@@ -552,6 +552,25 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setManualIssue(null);
   }
 
+  const activeTimelineSession = useMemo<WorkSession | null>(() => {
+    if (!selectedIssue || !timer.isRunning) return null;
+
+    const now = new Date();
+    const start = timer.startTime ?? new Date(now.getTime() - timer.elapsedSeconds * 1000);
+
+    return {
+      id: `__active__${selectedIssue.id}_${start.getTime()}`,
+      issue: selectedIssue,
+      hours: timer.elapsedSeconds / 3600,
+      activityId: settings.default_activity_id ?? 0,
+      comments: activeCommentDraft,
+      spentOn: now.toISOString().split("T")[0],
+      startedAt: formatHHMM(start),
+      stoppedAt: formatHHMM(now),
+      createdAt: now.toISOString(),
+    };
+  }, [activeCommentDraft, selectedIssue, settings.default_activity_id, timer.elapsedSeconds, timer.isRunning, timer.startTime]);
+
   return (
     <div className="flex flex-col max-w-6xl mx-auto lg:h-full lg:min-h-0">
       <div className="shrink-0 space-y-6 pb-4">
@@ -568,6 +587,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       </div>
       <div className="pt-2 lg:flex-1 lg:min-h-0">
         <RecentTickets
+          activeTimelineSession={activeTimelineSession}
           onSelectSession={handleSelectFromSession}
           onEditSession={handleEditSession}
         />

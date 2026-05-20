@@ -86,6 +86,7 @@ const en = {
     left: "Left:",
     estimate: "Est: {{value}}",
     totalAtEntry: "Total: {{value}}",
+    inProgress: "In progress",
     noEstimateShort: "No est.",
     editEntry: "Edit entry",
     openInRedmine: "Open in Redmine",

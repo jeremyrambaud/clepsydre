@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useTimer } from "@/hooks/useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
+import clepsydreWhiteLogo from "@/assets/clepsydre-white-logo.svg";
 import type { RedmineIssue } from "@/types";
 
 type View = "timer" | "analytics" | "history" | "settings";
@@ -157,15 +158,28 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
   return (
     <aside className="fixed inset-x-0 bottom-0 h-16 bg-surface-low border-t border-border flex flex-col z-50 md:inset-x-auto md:left-0 md:top-0 md:bottom-0 md:h-auto md:w-[260px] md:border-t-0 md:border-r">
       <div className="hidden md:block px-5 pt-6 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-            <Clock className="w-5 h-5 text-primary-foreground" />
+        <div className="flex flex-col items-center text-center gap-3">
+          <div className="w-14 h-14 rounded-xl bg-primary text-primary-foreground flex items-center justify-center">
+            <span
+              aria-hidden="true"
+              className="h-9 w-9 bg-current"
+              style={{
+                WebkitMaskImage: `url(${clepsydreWhiteLogo})`,
+                maskImage: `url(${clepsydreWhiteLogo})`,
+                WebkitMaskRepeat: "no-repeat",
+                maskRepeat: "no-repeat",
+                WebkitMaskPosition: "center",
+                maskPosition: "center",
+                WebkitMaskSize: "contain",
+                maskSize: "contain",
+              }}
+            />
           </div>
-          <div>
-            <h1 className="text-base font-semibold text-foreground font-heading leading-tight">
+          <div className="space-y-1">
+            <h1 className="text-lg font-semibold text-foreground font-heading leading-tight">
               CLEPSYDRE
             </h1>
-            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+            <span className="block text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
               {t("sidebar.brandTagline")}
             </span>
           </div>

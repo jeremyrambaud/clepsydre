@@ -315,6 +315,76 @@ export async function fetchIssueTodayLoggedHours(issueId: number): Promise<numbe
   return total;
 }
 
+export async function fetchUserLoggedHoursForDay(spentOn: string): Promise<number> {
+  const stats = await fetchUserDayStats(spentOn);
+  return stats.totalHours;
+}
+
+export interface UserDayStats {
+  totalHours: number;
+  entries: number;
+  uniqueIssueCount: number;
+  uniqueProjectCount: number;
+  issueIds: number[];
+  projectIds: number[];
+}
+
+export async function fetchUserDayStats(spentOn: string): Promise<UserDayStats> {
+  const { url, apiKey } = await getCredentials();
+  const pageSize = 100;
+  let offset = 0;
+  let total = 0;
+  let totalCount = 0;
+  let entries = 0;
+  const issueIds = new Set<number>();
+
+  do {
+    const params = new URLSearchParams({
+      user_id: "me",
+      spent_on: spentOn,
+      limit: String(pageSize),
+      offset: String(offset),
+    });
+
+    const resp = await fetch(`${url}/time_entries.json?${params}`, {
+      headers: { "X-Redmine-API-Key": apiKey },
+      danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+    });
+
+    if (!resp.ok) {
+      throw new Error(i18n.t("redmine.fetchTodayEntriesFailed", { status: resp.status }));
+    }
+
+    const data = (await resp.json()) as {
+      time_entries: RedmineTimeEntry[];
+      total_count: number;
+    };
+
+    total += data.time_entries.reduce((sum, entry) => sum + (entry.hours ?? 0), 0);
+    entries += data.time_entries.length;
+    data.time_entries.forEach((entry) => issueIds.add(entry.issue.id));
+    totalCount = data.total_count ?? data.time_entries.length;
+    offset += pageSize;
+  } while (offset < totalCount);
+
+  const issueResults = await Promise.allSettled([...issueIds].map((issueId) => fetchIssue(issueId)));
+  const projectIds = new Set<number>();
+  issueResults.forEach((result) => {
+    if (result.status === "fulfilled") {
+      projectIds.add(result.value.project.id);
+    }
+  });
+
+  return {
+    totalHours: total,
+    entries,
+    uniqueIssueCount: issueIds.size,
+    uniqueProjectCount: projectIds.size,
+    issueIds: [...issueIds],
+    projectIds: [...projectIds],
+  };
+}
+
 export async function fetchLatestIssueComment(issueId: number): Promise<string | null> {
   const { url, apiKey } = await getCredentials();
 

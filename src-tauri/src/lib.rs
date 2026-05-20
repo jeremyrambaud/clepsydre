@@ -335,6 +335,9 @@ pub fn run() {
     let timer_state = integration::default_timer_state();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            let _ = integration::show_main_window(app.clone());
+        }))
         .manage(idle_monitor_state.clone())
         .manage(minimize_to_tray_state.clone())
         .manage(pending_update_state.clone())

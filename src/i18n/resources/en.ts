@@ -217,6 +217,7 @@ const en = {
     remindOnNextLaunch: "Remind me on next launch",
     ignoreThisVersion: "Ignore this version",
     downloadInstall: "Download and Install",
+    viewRelease: "See what's changed in this release",
     installing: "Installing...",
     restartNow: "Restart Now",
     close: "Close",

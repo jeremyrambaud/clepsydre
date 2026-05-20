@@ -1,6 +1,6 @@
 import { useUpdaterStore } from "@/store";
 import { useTranslation } from "react-i18next";
-import { Download, RefreshCw, RotateCcw } from "lucide-react";
+import { Download, ExternalLink, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,9 +27,18 @@ export function UpdateDialog() {
     status === "ready" ||
     status === "error";
 
+  const releaseTag = availableVersion
+    ? availableVersion.startsWith("v")
+      ? availableVersion
+      : `v${availableVersion}`
+    : null;
+  const releaseUrl = releaseTag
+    ? `https://github.com/jeremyrambaud/clepsydre/releases/tag/${encodeURIComponent(releaseTag)}`
+    : null;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && dismiss()}>
-      <DialogContent showCloseButton={status !== "downloading"}>
+      <DialogContent showCloseButton={status !== "downloading"} className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {status === "available" && t("updateDialog.titleAvailable")}
@@ -48,9 +57,23 @@ export function UpdateDialog() {
         </DialogHeader>
 
         {status === "available" && releaseNotes && (
-          <div className="max-h-32 overflow-y-auto rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+          <div className="max-h-32 overflow-y-auto rounded-lg bg-muted p-3 text-xs text-muted-foreground break-words whitespace-pre-wrap">
             {releaseNotes}
           </div>
+        )}
+
+        {status === "available" && releaseUrl && (
+          <p className="text-xs text-muted-foreground">
+            <a
+              href={releaseUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 underline underline-offset-3 hover:text-foreground"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              {t("updateDialog.viewRelease")}
+            </a>
+          </p>
         )}
 
         {status === "downloading" && (
@@ -60,16 +83,16 @@ export function UpdateDialog() {
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="sm:flex-wrap">
           {status === "available" && (
             <>
-              <Button variant="outline" onClick={remindOnNextLaunch}>
+              <Button variant="outline" onClick={remindOnNextLaunch} className="w-full sm:w-auto">
                 {t("updateDialog.remindOnNextLaunch")}
               </Button>
-              <Button variant="ghost" onClick={ignoreCurrentVersion}>
+              <Button variant="ghost" onClick={ignoreCurrentVersion} className="w-full sm:w-auto">
                 {t("updateDialog.ignoreThisVersion")}
               </Button>
-              <Button onClick={downloadAndInstall} className="gap-2">
+              <Button onClick={downloadAndInstall} className="w-full gap-2 sm:w-auto">
                 <Download className="w-4 h-4" />
                 {t("updateDialog.downloadInstall")}
               </Button>
@@ -85,10 +108,10 @@ export function UpdateDialog() {
 
           {status === "ready" && (
             <>
-              <Button variant="outline" onClick={dismiss}>
+              <Button variant="outline" onClick={dismiss} className="w-full sm:w-auto">
                 {t("updateDialog.later")}
               </Button>
-              <Button onClick={restartApp} className="gap-2">
+              <Button onClick={restartApp} className="w-full gap-2 sm:w-auto">
                 <RotateCcw className="w-4 h-4" />
                 {t("updateDialog.restartNow")}
               </Button>

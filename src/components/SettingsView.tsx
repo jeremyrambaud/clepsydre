@@ -32,6 +32,8 @@ import { useSettingsStore, useUpdaterStore } from "@/store";
 const NO_DEFAULT_ACTIVITY_VALUE = "__none__";
 const GITHUB_REPO_URL = "https://github.com/jeremyrambaud/clepsydre";
 const GITHUB_ISSUES_URL = "https://github.com/jeremyrambaud/clepsydre/issues";
+const CHROME_EXTENSION_URL = "https://chromewebstore.google.com/detail/clepsydre-companion-%E2%80%94-red/ilojdkpijdgehbjjhlbljekgeoomijhp";
+const FIREFOX_EXTENSION_URL = "https://addons.mozilla.org/fr/firefox/addon/clepsydre-companion/";
 const LINKEDIN_URL = "https://www.linkedin.com/in/jeremy-rambaud/";
 const AUTHOR_NAME = "Jérémy Rambaud";
 
@@ -436,7 +438,28 @@ export function SettingsView() {
 
         <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
           <div className="space-y-4">
-            <p className="text-sm text-foreground">
+            <div className="border-b border-border pb-4 mb-4">
+              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading mb-2">
+                {t("settings.companionExtensions")}
+              </p>
+              <p className="text-xs text-muted-foreground mb-3">{t("settings.companionExtensionsHint")}</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button asChild variant="outline" className="w-full sm:w-auto gap-2">
+                  <a href={CHROME_EXTENSION_URL} target="_blank" rel="noreferrer">
+                    <Link className="w-4 h-4" />
+                    {t("settings.chromeExtension")}
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="w-full sm:w-auto gap-2">
+                  <a href={FIREFOX_EXTENSION_URL} target="_blank" rel="noreferrer">
+                    <Link className="w-4 h-4" />
+                    {t("settings.firefoxExtension")}
+                  </a>
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-md text-foreground font-bold">
               Clepsydre <span className="font-mono text-muted-foreground">v{appVersion || "..."}</span>
             </p>
 

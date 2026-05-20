@@ -82,6 +82,167 @@ jobs:
             --repo "${{ github.repository }}" \
             --clobber
 
+  publish-chrome-web-store:
+    name: Publish Chrome extension
+    if: ${{ !contains(github.ref_name, '-') }}
+    needs: package-extensions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Chrome extension bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist/extensions
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "clepsydre-extension-chrome-v*.zip" \
+            --dir dist/extensions
+
+      - name: Publish to Chrome Web Store
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ZIP_PATH="$(ls dist/extensions/clepsydre-extension-chrome-v*.zip | head -n1)"
+
+          TOKEN_RESPONSE="$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -H 'Content-Type: application/x-www-form-urlencoded' \
+            --data-urlencode "client_id=${CHROME_CLIENT_ID}" \
+            --data-urlencode "client_secret=${CHROME_CLIENT_SECRET}" \
+            --data-urlencode "refresh_token=${CHROME_REFRESH_TOKEN}" \
+            --data-urlencode 'grant_type=refresh_token')"
+
+          ACCESS_TOKEN="$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token // empty')"
+          if [ -z "${ACCESS_TOKEN}" ]; then
+            echo "Unable to fetch Chrome OAuth access token"
+            echo "${TOKEN_RESPONSE}"
+            exit 1
+          fi
+
+          UPLOAD_RESPONSE="$(curl -sS -X PUT \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H 'x-goog-api-version: 2' \
+            -H 'Content-Type: application/zip' \
+            --data-binary "@${ZIP_PATH}" \
+            "https://www.googleapis.com/upload/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}")"
+
+          UPLOAD_STATE="$(echo "${UPLOAD_RESPONSE}" | jq -r '.uploadState // empty')"
+          if [ "${UPLOAD_STATE}" != 'SUCCESS' ]; then
+            echo "Chrome Web Store upload failed"
+            echo "${UPLOAD_RESPONSE}"
+            exit 1
+          fi
+
+          PUBLISH_RESPONSE="$(curl -sS -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H 'x-goog-api-version: 2' \
+            "https://www.googleapis.com/chromewebstore/v1.1/items/${CHROME_EXTENSION_ID}/publish?publishTarget=default")"
+
+          PUBLISH_STATUS="$(echo "${PUBLISH_RESPONSE}" | jq -r '.status[0] // empty')"
+          if [ "${PUBLISH_STATUS}" != 'OK' ]; then
+            echo "Chrome Web Store publish failed"
+            echo "${PUBLISH_RESPONSE}"
+            exit 1
+          fi
+
+  publish-firefox-addons:
+    name: Publish Firefox extension
+    if: ${{ !contains(github.ref_name, '-') }}
+    needs: package-extensions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Firefox extension bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist/extensions
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern "clepsydre-extension-firefox-v*.zip" \
+            --dir dist/extensions
+
+      - name: Publish to Firefox Add-ons
+        env:
+          FIREFOX_ADDON_SLUG: ${{ secrets.FIREFOX_ADDON_SLUG }}
+          FIREFOX_API_KEY: ${{ secrets.FIREFOX_API_KEY }}
+          FIREFOX_API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
+        run: |
+          set -euo pipefail
+
+          b64url() {
+            openssl base64 -A | tr '+/' '-_' | tr -d '='
+          }
+
+          NOW="$(date +%s)"
+          EXP="$((NOW + 300))"
+          JTI="$(openssl rand -hex 16)"
+
+          HEADER_B64="$(printf '%s' '{"alg":"HS256","typ":"JWT"}' | b64url)"
+          PAYLOAD_B64="$(printf '{"iss":"%s","jti":"%s","iat":%s,"exp":%s}' "${FIREFOX_API_KEY}" "${JTI}" "${NOW}" "${EXP}" | b64url)"
+          SIGNATURE_B64="$(printf '%s' "${HEADER_B64}.${PAYLOAD_B64}" | openssl dgst -sha256 -hmac "${FIREFOX_API_SECRET}" -binary | b64url)"
+          JWT_TOKEN="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE_B64}"
+
+          ZIP_PATH="$(ls dist/extensions/clepsydre-extension-firefox-v*.zip | head -n1)"
+
+          UPLOAD_RESPONSE="$(curl -sS -X POST 'https://addons.mozilla.org/api/v5/addons/upload/' \
+            -H "Authorization: JWT ${JWT_TOKEN}" \
+            -F "upload=@${ZIP_PATH}" \
+            -F 'channel=listed')"
+
+          UPLOAD_UUID="$(echo "${UPLOAD_RESPONSE}" | jq -r '.uuid // empty')"
+          if [ -z "${UPLOAD_UUID}" ]; then
+            echo "Firefox upload failed"
+            echo "${UPLOAD_RESPONSE}"
+            exit 1
+          fi
+
+          PROCESSED='false'
+          for _ in $(seq 1 30); do
+            CHECK_RESPONSE="$(curl -sS -X GET "https://addons.mozilla.org/api/v5/addons/upload/${UPLOAD_UUID}/" \
+              -H "Authorization: JWT ${JWT_TOKEN}")"
+            PROCESSED="$(echo "${CHECK_RESPONSE}" | jq -r '.processed // false')"
+
+            if [ "${PROCESSED}" = 'true' ]; then
+              VALID="$(echo "${CHECK_RESPONSE}" | jq -r '.valid // false')"
+              if [ "${VALID}" = 'true' ]; then
+                break
+              fi
+              echo "Firefox upload validation failed"
+              echo "${CHECK_RESPONSE}"
+              exit 1
+            fi
+
+            sleep 5
+          done
+
+          if [ "${PROCESSED}" != 'true' ]; then
+            echo "Firefox upload processing timeout"
+            exit 1
+          fi
+
+          SUBMIT_STATUS="$(curl -sS -o /tmp/firefox-submit.json -w '%{http_code}' -X POST \
+            "https://addons.mozilla.org/api/v5/addons/addon/${FIREFOX_ADDON_SLUG}/versions/" \
+            -H "Authorization: JWT ${JWT_TOKEN}" \
+            -F "upload=${UPLOAD_UUID}")"
+
+          if [ "${SUBMIT_STATUS}" = '201' ]; then
+            echo "Firefox extension version submitted"
+            exit 0
+          fi
+
+          if [ "${SUBMIT_STATUS}" = '400' ] && jq -e '.. | strings | test("version.*exists|already exists"; "i")' /tmp/firefox-submit.json >/dev/null; then
+            echo "Firefox extension version already exists, continuing"
+            exit 0
+          fi
+
+          echo "Firefox publish failed (HTTP ${SUBMIT_STATUS})"
+          cat /tmp/firefox-submit.json
+          exit 1
+
   publish-beta-pointer:
     name: Publish latest-beta pointer
     if: contains(github.ref_name, '-beta.')

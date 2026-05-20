@@ -32,6 +32,26 @@ The packaged Chrome and Firefox extensions connect directly to the local Clepsyd
 
 No manual native host installation command is required on macOS, Linux, or Windows.
 
+## Browser Store Auto-Publish
+
+On stable tag releases (`vX.Y.Z`), GitHub Actions can automatically publish extension updates to Chrome Web Store and Firefox Add-ons.
+
+Required GitHub repository secrets:
+
+- `CHROME_EXTENSION_ID`
+- `CHROME_CLIENT_ID`
+- `CHROME_CLIENT_SECRET`
+- `CHROME_REFRESH_TOKEN`
+- `FIREFOX_ADDON_SLUG`
+- `FIREFOX_API_KEY`
+- `FIREFOX_API_SECRET`
+
+Notes:
+
+- Chrome credentials come from your Google Cloud OAuth client + Chrome Web Store API setup.
+- Firefox credentials come from AMO API credentials for the target add-on.
+- Beta tags are not pushed to browser stores by default.
+
 ## Project Structure
 
 ```

@@ -53,7 +53,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Clepsydre ${{ github.ref_name }}"
+          releaseName: "Clepsydre ${{ contains(github.ref_name, '-beta.') && 'Beta' || 'Stable' }} ${{ github.ref_name }}"
           releaseBody: "See the assets below to download and install this version."
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
@@ -75,8 +75,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
           gh release upload "${{ github.ref_name }}" \
-            dist/extensions/*.zip \
+            "dist/extensions/clepsydre-extension-chrome-v${VERSION}.zip#Chrome Extension (v${VERSION})" \
+            "dist/extensions/clepsydre-extension-firefox-v${VERSION}.zip#Firefox Extension (v${VERSION})" \
             --repo "${{ github.repository }}" \
             --clobber
 

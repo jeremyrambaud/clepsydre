@@ -39,7 +39,6 @@ export default {
         // so semantic-release only publishes notes/metadata on GitHub Releases.
         assets: [],
         addReleases: "bottom",
-        draftRelease: isBetaDraftRelease,
         releaseNameTemplate: `Clepsydre ${releaseChannelLabel} v<%= nextRelease.version %>`,
       },
     ],

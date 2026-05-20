@@ -217,6 +217,7 @@ const fr = {
     remindOnNextLaunch: "Me le rappeler au prochain lancement",
     ignoreThisVersion: "Ignorer cette version",
     downloadInstall: "Télécharger et installer",
+    viewRelease: "Voir les changements de cette version",
     installing: "Installation...",
     restartNow: "Redémarrer maintenant",
     close: "Fermer",

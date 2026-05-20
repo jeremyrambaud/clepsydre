@@ -131,9 +131,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     // Cancel in-flight comment fetches before switching context.
     draftCommentRequestRef.current += 1;
 
-    if (settings.prefill_last_comment_on_timer_start) {
+    if (pendingComment) {
       setActiveCommentDraft(pendingComment);
       skipNextIssuePrefillRef.current = true;
+    } else if (settings.prefill_last_comment_on_timer_start) {
+      void applyDraftCommentForIssue(nextIssue.id);
     } else {
       setActiveCommentDraft("");
     }
@@ -141,7 +143,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setSelectedIssue(nextIssue);
     timer.start();
     return true;
-  }, [setSelectedIssue, settings.prefill_last_comment_on_timer_start, timer]);
+  }, [applyDraftCommentForIssue, setSelectedIssue, settings.prefill_last_comment_on_timer_start, timer]);
 
   function handleSelectFromSession(session: WorkSession) {
     if (timer.isRunning && selectedIssue && selectedIssue.id !== session.issue.id) {
@@ -574,7 +576,43 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   return (
     <div className="flex flex-col max-w-6xl mx-auto lg:h-full lg:min-h-0">
       <div className="shrink-0 space-y-6 pb-4">
-        <SearchBar onManualEntry={handleOpenManualEntryForIssue} />
+        <SearchBar
+          onManualEntry={handleOpenManualEntryForIssue}
+          onIssueSelected={(issue, matchedComment) => {
+            const nextComment = matchedComment?.trim() ?? "";
+
+            if (timer.isRunning && selectedIssue && selectedIssue.id !== issue.id) {
+              pendingSwitchIssueRef.current = issue;
+              pendingSwitchCommentRef.current = nextComment;
+              void finalizeStopFlow(undefined, {
+                keepRunningAfterCreateSave: false,
+                forceCreateModal: true,
+              });
+              return;
+            }
+
+            if (nextComment) {
+              draftCommentRequestRef.current += 1;
+              setActiveCommentDraft(nextComment);
+              if (selectedIssue?.id !== issue.id) {
+                skipNextIssuePrefillRef.current = true;
+              }
+            }
+
+            if (selectedIssue?.id !== issue.id) {
+              setSelectedIssue(issue);
+            }
+
+            if (!timer.isRunning) {
+              timer.start();
+              return;
+            }
+
+            if (timer.isPaused) {
+              timer.resume();
+            }
+          }}
+        />
         <ActiveTicketSection
           timer={timer}
           onReset={handleResetActiveTicket}

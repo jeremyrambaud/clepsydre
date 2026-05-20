@@ -66,7 +66,7 @@
     --foreground: #d4e4fa;
     --card: #0d1c2d;
     --card-foreground: #d4e4fa;
-    --popover: #122131;
+    --popover: #0d1c2d;
     --popover-foreground: #d4e4fa;
     --primary: #adc6ff;
     --primary-foreground: #002e6a;
@@ -162,4 +162,14 @@
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Geist Variable', sans-serif;
     }
+}
+
+.draft-comment-editor-resizable::-webkit-resizer {
+    width: 14px;
+    height: 14px;
+    background-color: transparent;
+    background-image:
+        linear-gradient(135deg, transparent 0 58%, rgba(255, 255, 255, 0.9) 59% 65%, transparent 66% 100%),
+        linear-gradient(135deg, transparent 0 72%, rgba(255, 255, 255, 0.7) 73% 79%, transparent 80% 100%);
+    background-repeat: no-repeat;
 }

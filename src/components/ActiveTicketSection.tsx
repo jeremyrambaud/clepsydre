@@ -10,6 +10,33 @@ import { useIssueStore, useSettingsStore } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
 import { fetchIssueTodayLoggedHours } from "@/lib/redmine";
 
+const COMMENT_EDITOR_SIZE_STORAGE_KEY = "clepsydre-draft-comment-editor-size";
+const COMMENT_EDITOR_MIN_WIDTH = 280;
+const COMMENT_EDITOR_MIN_HEIGHT = 210;
+const COMMENT_EDITOR_DEFAULT_SIZE = { width: 320, height: 260 };
+
+function normalizeCommentEditorSize(size: { width: number; height: number }): { width: number; height: number } {
+  return {
+    width: Math.max(COMMENT_EDITOR_MIN_WIDTH, Math.round(size.width)),
+    height: Math.max(COMMENT_EDITOR_MIN_HEIGHT, Math.round(size.height)),
+  };
+}
+
+function readStoredCommentEditorSize(): { width: number; height: number } {
+  try {
+    const raw = localStorage.getItem(COMMENT_EDITOR_SIZE_STORAGE_KEY);
+    if (!raw) return COMMENT_EDITOR_DEFAULT_SIZE;
+
+    const parsed = JSON.parse(raw) as Partial<{ width: number; height: number }>;
+    return normalizeCommentEditorSize({
+      width: parsed.width ?? COMMENT_EDITOR_DEFAULT_SIZE.width,
+      height: parsed.height ?? COMMENT_EDITOR_DEFAULT_SIZE.height,
+    });
+  } catch {
+    return COMMENT_EDITOR_DEFAULT_SIZE;
+  }
+}
+
 function formatHoursMinutes(hours: number): string {
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
@@ -100,6 +127,8 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
   const [confirmReset, setConfirmReset] = useState(false);
   const [isCommentEditorOpen, setIsCommentEditorOpen] = useState(false);
   const [commentEditorValue, setCommentEditorValue] = useState("");
+  const [commentEditorSize, setCommentEditorSize] = useState<{ width: number; height: number }>(() => readStoredCommentEditorSize());
+  const commentEditorContentRef = useRef<HTMLDivElement | null>(null);
 
   const trimmedDraftComment = commentDraft.trim();
 
@@ -107,6 +136,67 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
     if (!isCommentEditorOpen) return;
     setCommentEditorValue(commentDraft);
   }, [commentDraft, isCommentEditorOpen]);
+
+  useEffect(() => {
+    if (!isCommentEditorOpen) return;
+    setCommentEditorSize(readStoredCommentEditorSize());
+  }, [isCommentEditorOpen]);
+
+  const persistCommentEditorSize = useCallback((size: { width: number; height: number }) => {
+    const normalized = normalizeCommentEditorSize(size);
+
+    setCommentEditorSize((prev) => {
+      if (prev.width === normalized.width && prev.height === normalized.height) {
+        return prev;
+      }
+
+      return normalized;
+    });
+
+    localStorage.setItem(COMMENT_EDITOR_SIZE_STORAGE_KEY, JSON.stringify(normalized));
+  }, []);
+
+  const handleCommentEditorOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      const el = commentEditorContentRef.current;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width >= COMMENT_EDITOR_MIN_WIDTH && rect.height >= COMMENT_EDITOR_MIN_HEIGHT) {
+          persistCommentEditorSize({ width: rect.width, height: rect.height });
+        }
+      }
+    }
+
+    setIsCommentEditorOpen(nextOpen);
+  }, [persistCommentEditorSize]);
+
+  useEffect(() => {
+    if (!isCommentEditorOpen) return;
+
+    const el = commentEditorContentRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+
+      // Ignore transient measurements while popover is being mounted/unmounted.
+      if (
+        entry.contentRect.width < COMMENT_EDITOR_MIN_WIDTH
+        || entry.contentRect.height < COMMENT_EDITOR_MIN_HEIGHT
+      ) {
+        return;
+      }
+
+      const nextWidth = Math.max(COMMENT_EDITOR_MIN_WIDTH, Math.round(entry.contentRect.width));
+      const nextHeight = Math.max(COMMENT_EDITOR_MIN_HEIGHT, Math.round(entry.contentRect.height));
+
+      persistCommentEditorSize({ width: nextWidth, height: nextHeight });
+    });
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isCommentEditorOpen, persistCommentEditorSize]);
 
   const handleResetWithConfirm = useCallback(() => {
     (onReset ?? timer.reset)();
@@ -218,21 +308,32 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
                   {t("activeTicket.draftCommentLabel")}
                 </span>
                 {onCommentDraftChange && (
-                  <Popover open={isCommentEditorOpen} onOpenChange={setIsCommentEditorOpen}>
+                  <Popover open={isCommentEditorOpen} onOpenChange={handleCommentEditorOpenChange}>
                     <PopoverTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]">
                         {trimmedDraftComment ? t("activeTicket.draftCommentEdit") : t("activeTicket.draftCommentAdd")}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent side="bottom" align="start" className="w-[320px] max-w-[calc(100vw-2rem)] p-3">
+                    <PopoverContent
+                      ref={commentEditorContentRef}
+                      side="bottom"
+                      align="start"
+                      className="draft-comment-editor-resizable max-w-[calc(100vw-2rem)] p-3 resize overflow-auto min-w-[280px] min-h-[210px] flex flex-col"
+                      style={{
+                        width: `${commentEditorSize.width}px`,
+                        height: `${commentEditorSize.height}px`,
+                      }}
+                    >
                       <p className="mb-2 text-sm font-medium">{t("activeTicket.draftCommentEditorTitle")}</p>
-                      <textarea
-                        rows={4}
-                        value={commentEditorValue}
-                        onChange={(event) => setCommentEditorValue(event.target.value)}
-                        placeholder={t("activeTicket.draftCommentPlaceholder")}
-                        className="w-full rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
-                      />
+                      <div className="flex-1 min-h-0">
+                        <textarea
+                          rows={4}
+                          value={commentEditorValue}
+                          onChange={(event) => setCommentEditorValue(event.target.value)}
+                          placeholder={t("activeTicket.draftCommentPlaceholder")}
+                          className="w-full h-full min-h-[120px] rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
+                        />
+                      </div>
                       <div className="mt-3 flex justify-end gap-2">
                         <Button variant="ghost" size="sm" onClick={() => setIsCommentEditorOpen(false)}>
                           {t("timeEntry.discard")}

@@ -1,6 +1,6 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { invoke } from "@tauri-apps/api/core";
-import type { RedmineIssue, RedmineActivity, RedmineTimeEntry, WorkSession } from "@/types";
+import type { RedmineIssue, RedmineActivity, RedmineTimeEntry, WorkSession, IssueSearchResult } from "@/types";
 import i18n from "@/i18n";
 import { useSettingsStore } from "@/store";
 
@@ -14,6 +14,9 @@ interface RedmineSingleIssueResponse {
 
 const SEARCH_REQUEST_LIMIT = 50;
 const SEARCH_RESULT_LIMIT = 30;
+const COMMENT_SEARCH_PAGE_SIZE = 100;
+const COMMENT_SEARCH_MAX_SCANNED_ENTRIES = 500;
+const COMMENT_SEARCH_MAX_MATCHED_ISSUES = 80;
 
 function normalizeSearchText(value: string): string {
   return value
@@ -72,6 +75,126 @@ function scoreIssue(issue: RedmineIssue, normalizedQuery: string, terms: string[
   return score;
 }
 
+function scoreCommentMatch(comment: string, normalizedQuery: string, terms: string[]): number {
+  const normalizedComment = normalizeSearchText(comment);
+  if (!normalizedComment) return 0;
+
+  let score = 0;
+  if (normalizedComment.includes(normalizedQuery)) score += 180;
+
+  const matchedTerms = terms.filter((term) => normalizedComment.includes(term)).length;
+  if (terms.length > 0 && matchedTerms === terms.length) {
+    score += 120;
+  }
+  score += matchedTerms * 30;
+
+  return score;
+}
+
+function extractMatchedCommentSnippet(comment: string, query: string, terms: string[]): string | null {
+  const trimmed = comment.trim();
+  if (!trimmed) return null;
+
+  const lowered = trimmed.toLowerCase();
+  const loweredQuery = query.trim().toLowerCase();
+  const loweredTerms = terms.map((term) => term.toLowerCase()).filter(Boolean);
+
+  let startIndex = -1;
+  let matchLength = 0;
+
+  if (loweredQuery.length >= 2) {
+    startIndex = lowered.indexOf(loweredQuery);
+    matchLength = loweredQuery.length;
+  }
+
+  if (startIndex === -1) {
+    for (const term of loweredTerms) {
+      if (term.length < 2) continue;
+      const idx = lowered.indexOf(term);
+      if (idx >= 0) {
+        startIndex = idx;
+        matchLength = term.length;
+        break;
+      }
+    }
+  }
+
+  if (startIndex === -1) return null;
+
+  const contextRadius = 36;
+  const from = Math.max(0, startIndex - contextRadius);
+  const to = Math.min(trimmed.length, startIndex + matchLength + contextRadius);
+  const snippet = trimmed.slice(from, to).replace(/\s+/g, " ").trim();
+
+  return `${from > 0 ? "..." : ""}${snippet}${to < trimmed.length ? "..." : ""}`;
+}
+
+interface CommentSearchMatch {
+  score: number;
+  snippet?: string;
+  fullComment?: string;
+}
+
+async function searchIssueScoresByTimeEntryComments(
+  url: string,
+  apiKey: string,
+  query: string,
+  normalizedQuery: string,
+  terms: string[]
+): Promise<Map<number, CommentSearchMatch>> {
+  const matches = new Map<number, CommentSearchMatch>();
+  let offset = 0;
+  let scannedEntries = 0;
+  let totalCount = Number.POSITIVE_INFINITY;
+
+  while (offset < totalCount && scannedEntries < COMMENT_SEARCH_MAX_SCANNED_ENTRIES) {
+    const params = new URLSearchParams({
+      user_id: "me",
+      limit: String(COMMENT_SEARCH_PAGE_SIZE),
+      offset: String(offset),
+      sort: "spent_on:desc",
+    });
+
+    const resp = await fetch(`${url}/time_entries.json?${params}`, {
+      headers: { "X-Redmine-API-Key": apiKey },
+      danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+    });
+
+    if (!resp.ok) {
+      throw new Error(i18n.t("redmine.fetchEntriesFailed", { status: resp.status }));
+    }
+
+    const data = (await resp.json()) as {
+      time_entries: RedmineTimeEntry[];
+      total_count: number;
+    };
+
+    totalCount = data.total_count ?? data.time_entries.length;
+    scannedEntries += data.time_entries.length;
+    offset += COMMENT_SEARCH_PAGE_SIZE;
+
+    for (const entry of data.time_entries) {
+      const commentScore = scoreCommentMatch(entry.comments ?? "", normalizedQuery, terms);
+      if (commentScore <= 0) continue;
+
+      const current = matches.get(entry.issue.id);
+      if (!current || commentScore > current.score) {
+        matches.set(entry.issue.id, {
+          score: commentScore,
+          snippet: extractMatchedCommentSnippet(entry.comments ?? "", query, terms) ?? undefined,
+          fullComment: entry.comments?.trim() || undefined,
+        });
+      }
+    }
+
+    if (matches.size >= COMMENT_SEARCH_MAX_MATCHED_ISSUES) {
+      break;
+    }
+  }
+
+  return matches;
+}
+
 async function getCredentials(): Promise<{ url: string; apiKey: string }> {
   const { redmine_url, api_key } = useSettingsStore.getState().settings;
   let apiKey = api_key;
@@ -89,8 +212,9 @@ async function getCredentials(): Promise<{ url: string; apiKey: string }> {
   return { url: redmine_url.replace(/\/+$/, ""), apiKey };
 }
 
-export async function searchIssues(query: string): Promise<RedmineIssue[]> {
+export async function searchIssues(query: string): Promise<IssueSearchResult[]> {
   const { url, apiKey } = await getCredentials();
+  const searchInTimeComments = useSettingsStore.getState().settings.search_in_time_comments;
   const trimmed = query.trim().replace(/^#/, "");
 
   if (!trimmed) return [];
@@ -104,7 +228,7 @@ export async function searchIssues(query: string): Promise<RedmineIssue[]> {
       });
       if (resp.ok) {
         const data = (await resp.json()) as RedmineSingleIssueResponse;
-        return [data.issue];
+        return [{ issue: data.issue }];
       }
     } catch {
       // fall through to text search
@@ -126,6 +250,7 @@ export async function searchIssues(query: string): Promise<RedmineIssue[]> {
   );
 
   const mergedById = new Map<number, RedmineIssue>();
+  const commentMatchByIssueId = new Map<number, CommentSearchMatch>();
   let firstError: string | null = null;
 
   for (const result of settled) {
@@ -143,20 +268,51 @@ export async function searchIssues(query: string): Promise<RedmineIssue[]> {
     }
   }
 
+  if (searchInTimeComments) {
+    try {
+      const commentMatches = await searchIssueScoresByTimeEntryComments(url, apiKey, trimmed, normalizedQuery, terms);
+      commentMatches.forEach((match, issueId) => {
+        commentMatchByIssueId.set(issueId, match);
+      });
+
+      const missingIssueIds = [...commentMatches.keys()].filter((issueId) => !mergedById.has(issueId));
+      if (missingIssueIds.length > 0) {
+        const fetchedMissing = await Promise.allSettled(
+          missingIssueIds.map((issueId) => fetchIssue(issueId))
+        );
+
+        for (const result of fetchedMissing) {
+          if (result.status === "fulfilled" && !mergedById.has(result.value.id)) {
+            mergedById.set(result.value.id, result.value);
+          }
+        }
+      }
+    } catch {
+      // Experimental search must not break the main subject/project search flow.
+    }
+  }
+
   if (mergedById.size === 0) {
     if (firstError) throw new Error(firstError);
     return [];
   }
 
   const ranked = [...mergedById.values()]
-    .map((issue) => ({ issue, score: scoreIssue(issue, normalizedQuery, terms) }))
+    .map((issue) => ({
+      issue,
+      score: scoreIssue(issue, normalizedQuery, terms) + (commentMatchByIssueId.get(issue.id)?.score ?? 0),
+    }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       return b.issue.updated_on.localeCompare(a.issue.updated_on);
     })
     .slice(0, SEARCH_RESULT_LIMIT)
-    .map(({ issue }) => issue);
+    .map(({ issue }) => ({
+      issue,
+      matchedCommentSnippet: commentMatchByIssueId.get(issue.id)?.snippet,
+      matchedCommentFullText: commentMatchByIssueId.get(issue.id)?.fullComment,
+    }));
 
   return ranked;
 }

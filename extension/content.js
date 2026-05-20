@@ -58,6 +58,37 @@
     return `${base}/issues/${issueIdValue}`;
   }
 
+  function createIconSvg(type) {
+    const svgNs = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("xmlns", svgNs);
+    svg.setAttribute("width", "14");
+    svg.setAttribute("height", "14");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "currentColor");
+    svg.setAttribute("stroke", "none");
+
+    if (type === "play") {
+      const polygon = document.createElementNS(svgNs, "polygon");
+      polygon.setAttribute("points", "6,3 20,12 6,21");
+      svg.appendChild(polygon);
+      return svg;
+    }
+
+    const rect = document.createElementNS(svgNs, "rect");
+    rect.setAttribute("x", "4");
+    rect.setAttribute("y", "4");
+    rect.setAttribute("width", "16");
+    rect.setAttribute("height", "16");
+    rect.setAttribute("rx", "2");
+    svg.appendChild(rect);
+    return svg;
+  }
+
+  function setButtonIcon(button, type) {
+    button.replaceChildren(createIconSvg(type));
+  }
+
   const issueId = extractIssueId();
   if (!issueId) return;
 
@@ -97,7 +128,7 @@
     btn = document.createElement("button");
     btn.className = "clepsydre-btn clepsydre-btn--start";
     btn.title = "Start Clepsydre timer";
-    btn.innerHTML = svgPlay();
+    setButtonIcon(btn, "play");
 
     infoSpan = document.createElement("span");
     infoSpan.className = "clepsydre-info";
@@ -132,7 +163,7 @@
     btn.disabled = true;
     btn.className = "clepsydre-btn clepsydre-btn--start";
     btn.title = "Clepsydre app unavailable";
-    btn.innerHTML = svgPlay();
+    setButtonIcon(btn, "play");
 
     statusDot.className = "clepsydre-status clepsydre-status--disconnected";
     statusDot.title = "Clepsydre app not running or not installed";
@@ -200,7 +231,7 @@
     if (isThisIssueActive) {
       btn.className = "clepsydre-btn clepsydre-btn--stop";
       btn.title = "Stop Clepsydre timer";
-      btn.innerHTML = svgStop();
+      setButtonIcon(btn, "stop");
       statusDot.className = "clepsydre-status clepsydre-status--active";
       statusDot.title = "Timer running";
 
@@ -210,7 +241,7 @@
     } else {
       btn.className = "clepsydre-btn clepsydre-btn--start";
       btn.title = "Start Clepsydre timer";
-      btn.innerHTML = svgPlay();
+      setButtonIcon(btn, "play");
       stopLocalTicker();
 
       if (isOtherActive) {
@@ -271,13 +302,5 @@
 
   refreshState();
   setInterval(refreshState, 5000);
-
-  function svgPlay() {
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6,3 20,12 6,21"/></svg>';
-  }
-
-  function svgStop() {
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>';
-  }
 
 })();

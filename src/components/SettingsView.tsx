@@ -411,6 +411,25 @@ export function SettingsView() {
 
       <section className="rounded-xl bg-card border border-border p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-6">
+          <AlertCircle className="w-5 h-5 text-primary" />
+          <h3 className="text-lg font-semibold font-heading text-foreground">{t("settings.experimental")}</h3>
+        </div>
+
+        <SettingRow
+          title={t("settings.searchInTimeComments")}
+          hint={t("settings.searchInTimeCommentsHint")}
+          control={(
+            <Switch
+              checked={draft.search_in_time_comments}
+              onCheckedChange={(checked) => setDraft({ ...draft, search_in_time_comments: checked })}
+              className="data-[state=checked]:bg-primary"
+            />
+          )}
+        />
+      </section>
+
+      <section className="rounded-xl bg-card border border-border p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-6">
           <Download className="w-5 h-5 text-primary" />
           <h3 className="text-lg font-semibold font-heading text-foreground">{t("settings.aboutAndUpdates")}</h3>
         </div>

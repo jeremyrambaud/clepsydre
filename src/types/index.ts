@@ -23,6 +23,12 @@ export interface RedmineIssue {
   spent_hours?: number;
 }
 
+export interface IssueSearchResult {
+  issue: RedmineIssue;
+  matchedCommentSnippet?: string;
+  matchedCommentFullText?: string;
+}
+
 export interface RedmineTimeEntry {
   id: number;
   issue: RedmineRef;
@@ -65,6 +71,7 @@ export interface UserSettings {
   minimize_to_tray: boolean;
   update_channel: "stable" | "beta";
   check_interval_minutes: number;
+  search_in_time_comments: boolean;
   idle_threshold_minutes: number;
   theme: "light" | "dark" | "system";
 }

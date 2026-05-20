@@ -1,6 +1,8 @@
 import { useUpdaterStore } from "@/store";
 import { useTranslation } from "react-i18next";
 import { Download, ExternalLink, RefreshCw, RotateCcw } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,8 +59,17 @@ export function UpdateDialog() {
         </DialogHeader>
 
         {status === "available" && releaseNotes && (
-          <div className="max-h-32 overflow-y-auto rounded-lg bg-muted p-3 text-xs text-muted-foreground break-words whitespace-pre-wrap">
-            {releaseNotes}
+          <div className="max-h-40 overflow-y-auto rounded-lg bg-muted p-3 text-xs text-muted-foreground [&_h1]:mb-2 [&_h1]:text-sm [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:text-sm [&_h2]:font-semibold [&_h3]:mb-2 [&_h3]:font-semibold [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-4 [&_li]:mb-1 [&_pre]:mb-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-background/70 [&_pre]:p-2 [&_code]:rounded [&_code]:bg-background/70 [&_code]:px-1 [&_a]:underline [&_a]:underline-offset-3 [&_a:hover]:text-foreground break-words">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ ...props }) => (
+                  <a {...props} target="_blank" rel="noreferrer" />
+                ),
+              }}
+            >
+              {releaseNotes}
+            </ReactMarkdown>
           </div>
         )}
 

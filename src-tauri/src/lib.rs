@@ -3,6 +3,7 @@ mod commands;
 mod migrations;
 
 use commands::{idle, integration, keyring};
+use reqwest::StatusCode;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -21,6 +22,11 @@ use url::Url;
 struct UpdateMetadata {
     version: String,
     notes: Option<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct GithubReleaseResponse {
+    body: Option<String>,
 }
 
 const MIN_WINDOW_WIDTH: f64 = 390.0;
@@ -104,6 +110,59 @@ fn update_endpoint_for_channel(channel: &str) -> &'static str {
         "beta" => "https://github.com/jeremyrambaud/clepsydre/releases/download/latest-beta/latest.json",
         _ => "https://github.com/jeremyrambaud/clepsydre/releases/download/latest-stable/latest.json",
     }
+}
+
+async fn fetch_github_release_body(version: &str) -> Option<String> {
+    let candidates = if version.starts_with('v') {
+        vec![version.to_string(), version.trim_start_matches('v').to_string()]
+    } else {
+        vec![format!("v{version}"), version.to_string()]
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .ok()?;
+
+    for tag in candidates {
+        let endpoint = format!(
+            "https://api.github.com/repos/jeremyrambaud/clepsydre/releases/tags/{tag}"
+        );
+
+        let response = match client
+            .get(endpoint)
+            .header("Accept", "application/vnd.github+json")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .header("User-Agent", "clepsydre-updater")
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(_) => continue,
+        };
+
+        if response.status() == StatusCode::NOT_FOUND {
+            continue;
+        }
+
+        if !response.status().is_success() {
+            continue;
+        }
+
+        let release = match response.json::<GithubReleaseResponse>().await {
+            Ok(release) => release,
+            Err(_) => continue,
+        };
+
+        if let Some(body) = release.body {
+            let trimmed = body.trim();
+            if !trimmed.is_empty() {
+                return Some(trimmed.to_string());
+            }
+        }
+    }
+
+    None
 }
 
 fn format_clock_timer(seconds: u32) -> String {
@@ -218,18 +277,22 @@ async fn check_for_updates(
         .await
         .map_err(|e| format!("Failed to check for updates: {e}"))?;
 
-    let mut pending = pending_update_state
-        .lock()
-        .map_err(|e| format!("Failed to lock pending update state: {e}"))?;
-
     if let Some(update) = update {
+        let github_release_body = fetch_github_release_body(&update.version).await;
         let metadata = UpdateMetadata {
             version: update.version.clone(),
-            notes: update.body.clone(),
+            notes: github_release_body.or(update.body.clone()),
         };
+
+        let mut pending = pending_update_state
+            .lock()
+            .map_err(|e| format!("Failed to lock pending update state: {e}"))?;
         *pending = Some(update);
         Ok(Some(metadata))
     } else {
+        let mut pending = pending_update_state
+            .lock()
+            .map_err(|e| format!("Failed to lock pending update state: {e}"))?;
         *pending = None;
         Ok(None)
     }

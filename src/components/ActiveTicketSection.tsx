@@ -405,7 +405,7 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
                   {estimated > 0 ? `${formatHoursMinutes(estimated)} ${t("activeTicket.estimateShort")}` : t("activeTicket.noEstimate")}
                 </span>
                 <span className={`text-xs ${estimated === 0 || isOver ? "text-destructive" : "text-tertiary"}`}>
-                  {isOver || estimated === 0 && `${t("activeTicket.overByLabel", { value: formatHoursMinutes(totalSpent - estimated) })}`}
+                  {(isOver || estimated === 0) && `${t("activeTicket.overByLabel", { value: formatHoursMinutes(totalSpent - estimated) })}`}
                   {estimated > 0 && !isOver && `${t("activeTicket.remainingLabel", { value: formatHoursMinutes(remaining) })}`}
                 </span>
               </div>

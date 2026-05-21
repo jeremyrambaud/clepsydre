@@ -134,6 +134,11 @@ export const useUpdaterStore = create<UpdaterState>()(
       },
 
       restartApp: async () => {
+        try {
+          await invoke("set_minimize_to_tray", { enabled: false });
+        } catch {
+          // no-op: fallback to relaunch even if tray behavior sync fails
+        }
         await relaunch();
       },
 

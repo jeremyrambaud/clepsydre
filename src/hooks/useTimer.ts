@@ -1,5 +1,75 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 
+const TIMER_STORAGE_KEY = "clepsydre-active-timer";
+
+interface PersistedTimerState {
+  isRunning: boolean;
+  isPaused: boolean;
+  startTimeMs: number | null;
+  pausedElapsed: number;
+  elapsedSeconds: number;
+}
+
+function readPersistedTimerState(): PersistedTimerState {
+  try {
+    const raw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!raw) {
+      return {
+        isRunning: false,
+        isPaused: false,
+        startTimeMs: null,
+        pausedElapsed: 0,
+        elapsedSeconds: 0,
+      };
+    }
+
+    const parsed = JSON.parse(raw) as Partial<PersistedTimerState>;
+    const isRunning = Boolean(parsed.isRunning);
+    const isPaused = Boolean(parsed.isPaused);
+    const startTimeMs = typeof parsed.startTimeMs === "number" ? parsed.startTimeMs : null;
+    const pausedElapsed = Math.max(0, Math.floor(parsed.pausedElapsed ?? 0));
+    const storedElapsed = Math.max(0, Math.floor(parsed.elapsedSeconds ?? 0));
+
+    if (isRunning && !isPaused && startTimeMs !== null) {
+      const liveElapsed = Math.max(0, Math.floor((Date.now() - startTimeMs) / 1000));
+      return {
+        isRunning,
+        isPaused,
+        startTimeMs,
+        pausedElapsed: liveElapsed,
+        elapsedSeconds: liveElapsed,
+      };
+    }
+
+    if (isRunning && isPaused) {
+      const paused = pausedElapsed || storedElapsed;
+      return {
+        isRunning,
+        isPaused,
+        startTimeMs,
+        pausedElapsed: paused,
+        elapsedSeconds: paused,
+      };
+    }
+
+    return {
+      isRunning: false,
+      isPaused: false,
+      startTimeMs: null,
+      pausedElapsed: 0,
+      elapsedSeconds: 0,
+    };
+  } catch {
+    return {
+      isRunning: false,
+      isPaused: false,
+      startTimeMs: null,
+      pausedElapsed: 0,
+      elapsedSeconds: 0,
+    };
+  }
+}
+
 export interface TimerReturn {
   elapsedSeconds: number;
   isRunning: boolean;
@@ -22,11 +92,19 @@ function pad(n: number): string {
 }
 
 export function useTimer(): TimerReturn {
-  const [startTime, setStartTimeState] = useState<Date | null>(null);
-  const [pausedElapsed, setPausedElapsed] = useState(0);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const initialStateRef = useRef<PersistedTimerState | null>(null);
+  if (!initialStateRef.current) {
+    initialStateRef.current = readPersistedTimerState();
+  }
+
+  const persistedState = initialStateRef.current;
+  const [startTime, setStartTimeState] = useState<Date | null>(
+    persistedState.startTimeMs ? new Date(persistedState.startTimeMs) : null
+  );
+  const [pausedElapsed, setPausedElapsed] = useState(persistedState.pausedElapsed);
+  const [elapsedSeconds, setElapsedSeconds] = useState(persistedState.elapsedSeconds);
+  const [isRunning, setIsRunning] = useState(persistedState.isRunning);
+  const [isPaused, setIsPaused] = useState(persistedState.isPaused);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clearTimer = useCallback(() => {
@@ -119,6 +197,33 @@ export function useTimer(): TimerReturn {
   useEffect(() => {
     return () => clearTimer();
   }, [clearTimer]);
+
+  useEffect(() => {
+    if (isRunning && !isPaused && startTime && !intervalRef.current) {
+      tick();
+      intervalRef.current = setInterval(tick, 1000);
+    }
+
+    if ((!isRunning || isPaused || !startTime) && intervalRef.current) {
+      clearTimer();
+    }
+  }, [clearTimer, isPaused, isRunning, startTime, tick]);
+
+  useEffect(() => {
+    if (isRunning || isPaused) {
+      const payload: PersistedTimerState = {
+        isRunning,
+        isPaused,
+        startTimeMs: startTime ? startTime.getTime() : null,
+        pausedElapsed,
+        elapsedSeconds,
+      };
+      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(payload));
+      return;
+    }
+
+    localStorage.removeItem(TIMER_STORAGE_KEY);
+  }, [elapsedSeconds, isPaused, isRunning, pausedElapsed, startTime]);
 
   const totalH = Math.floor(elapsedSeconds / 3600);
   const totalM = Math.floor((elapsedSeconds % 3600) / 60);

@@ -4,14 +4,14 @@ on:
   push:
     branches:
       - main
-      - beta
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   release:
-    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(release):')) && (github.event_name != 'workflow_dispatch' || github.ref_name == 'beta') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

@@ -52,6 +52,18 @@ Notes:
 - Firefox credentials come from AMO API credentials for the target add-on.
 - Beta tags are not pushed to browser stores by default.
 
+## Beta Release Trigger
+
+Semantic-release is automatic only on `main`.
+
+For `beta`, release creation is manual:
+
+1. Open GitHub Actions.
+2. Run the `Semantic Release` workflow.
+3. Select the `beta` branch in the branch picker before running.
+
+No beta version is created automatically on push.
+
 ## Project Structure
 
 ```

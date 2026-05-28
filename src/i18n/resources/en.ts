@@ -253,6 +253,8 @@ const en = {
     noDefaultActivity: "No default activity",
     defaultComment: "Default Comment",
     defaultCommentPlaceholder: "Optional default comment for time entries...",
+    autoStartTimerOnTaskSelect: "Start timer when selecting a task",
+    autoStartTimerOnTaskSelectHint: "When enabled, selecting a task (search or timeline) starts the timer automatically.",
     system: "System",
     language: "Language",
     languageEnglish: "English",

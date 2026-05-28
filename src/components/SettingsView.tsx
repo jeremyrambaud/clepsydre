@@ -327,6 +327,22 @@ export function SettingsView() {
 
               <div className="py-4">
                 <SettingRow
+                  title={t("settings.autoStartTimerOnTaskSelect")}
+                  hint={t("settings.autoStartTimerOnTaskSelectHint")}
+                  control={(
+                    <Switch
+                      checked={draft.auto_start_timer_on_task_select}
+                      onCheckedChange={(checked) =>
+                        setDraft({ ...draft, auto_start_timer_on_task_select: checked })
+                      }
+                      className="data-[state=checked]:bg-primary"
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="py-4">
+                <SettingRow
                   title={t("settings.prefillLastComment")}
                   hint={t("settings.prefillLastCommentHint")}
                   control={(

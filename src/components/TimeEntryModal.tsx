@@ -25,7 +25,14 @@ import {
 } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store";
-import { logTimeEntry, updateTimeEntry, deleteTimeEntry, fetchActivities, searchIssues } from "@/lib/redmine";
+import {
+  logTimeEntry,
+  updateTimeEntry,
+  deleteTimeEntry,
+  fetchActivities,
+  searchIssues,
+  persistEntryTimesForCurrentDomain,
+} from "@/lib/redmine";
 import { SearchResultItem } from "./SearchResultItem";
 import { toast } from "sonner";
 import type { RedmineIssue, RedmineActivity, WorkSession, IssueSearchResult } from "@/types";
@@ -35,11 +42,12 @@ const DEBOUNCE_MS = 350;
 interface BaseModalProps {
   open: boolean;
   onClose: () => void;
-  issue: RedmineIssue;
 }
 
 interface CreateModalProps extends BaseModalProps {
   mode: "create";
+  issue?: RedmineIssue | null;
+  initialSpentOn?: string;
   elapsedSeconds: number;
   startedAt: string;
   stoppedAt: string;
@@ -50,6 +58,7 @@ interface CreateModalProps extends BaseModalProps {
 
 interface EditModalProps extends BaseModalProps {
   mode: "edit";
+  issue: RedmineIssue;
   session: WorkSession;
   onSaved: (updates: Pick<WorkSession, "issue" | "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) => void;
   onDeleted?: (sessionId: string) => void;
@@ -120,7 +129,7 @@ function TruncatedTicketSubject({ subject }: { subject: string }) {
   }, [check, subject]);
 
   const paragraph = (
-    <p ref={ref} className="text-sm font-medium text-foreground line-clamp-2 break-words">
+    <p ref={ref} className="text-sm font-medium text-foreground line-clamp-2 wrap-break-word">
       {subject}
     </p>
   );
@@ -130,17 +139,18 @@ function TruncatedTicketSubject({ subject }: { subject: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{paragraph}</TooltipTrigger>
-      <TooltipContent className="max-w-sm break-words">{subject}</TooltipContent>
+      <TooltipContent className="max-w-sm wrap-break-word">{subject}</TooltipContent>
     </Tooltip>
   );
 }
 
 export function TimeEntryModal(props: TimeEntryModalProps) {
   const { t } = useTranslation();
-  const { open, onClose, issue } = props;
+  const { open, onClose } = props;
   const { settings, activities, setActivities } = useSettingsStore();
 
   const isEdit = props.mode === "edit";
+  const initialIssue = isEdit ? props.issue : props.issue ?? null;
 
   const defaults = isEdit
     ? {
@@ -153,7 +163,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
       }
     : {
         duration: secondsToTimeValue(props.elapsedSeconds),
-        date: formatDate(new Date()),
+        date: props.initialSpentOn ?? formatDate(new Date()),
         activity: settings.default_activity_id?.toString() ?? "",
         comments: props.initialComment ?? settings.default_comment,
         start: props.startedAt ?? formatHHMM(new Date()),
@@ -172,7 +182,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isLoadingActivities, setIsLoadingActivities] = useState(false);
   const [lastEdited, setLastEdited] = useState<"duration" | "range">("duration");
-  const [selectedIssue, setSelectedIssue] = useState(issue);
+  const [selectedIssue, setSelectedIssue] = useState<RedmineIssue | null>(initialIssue);
   const [isTicketSearchMode, setIsTicketSearchMode] = useState(false);
   const [ticketSearchQuery, setTicketSearchQuery] = useState("");
   const [ticketSearchResults, setTicketSearchResults] = useState<IssueSearchResult[]>([]);
@@ -210,8 +220,8 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
   useEffect(() => {
     if (open) {
-      setSelectedIssue(issue);
-      setIsTicketSearchMode(false);
+      setSelectedIssue(initialIssue);
+      setIsTicketSearchMode(!isEdit && !initialIssue);
       setTicketSearchQuery("");
       setTicketSearchResults([]);
       setTicketSearchError(null);
@@ -226,7 +236,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
       setConfirmDelete(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [defaults.activity, defaults.comments, defaults.date, defaults.duration, defaults.start, defaults.stop, initialIssue, isEdit, open]);
 
   useEffect(() => {
     if (open && activities.length === 0) {
@@ -377,6 +387,11 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
       return;
     }
 
+    if (!selectedIssue) {
+      toast.error(t("timeEntry.validationSelectTicket"));
+      return;
+    }
+
     if (!activityId) {
       toast.error(t("timeEntry.validationSelectActivity"));
       return;
@@ -397,6 +412,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           comments,
           spentOn,
         });
+        await persistEntryTimesForCurrentDomain(props.session.redmineEntryId!, startTime, stopTime);
         toast.success(t("timeEntry.updated"), {
           description: t("timeEntry.loggedDescription", {
             duration,
@@ -420,6 +436,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           comments,
           spentOn,
         });
+        await persistEntryTimesForCurrentDomain(entryId, startTime, stopTime);
         toast.success(t("timeEntry.logged"), {
           description: t("timeEntry.loggedDescription", {
             duration,
@@ -458,7 +475,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
               {t("timeEntry.ticket")} <span className="text-destructive">*</span>
             </Label>
-            {!isTicketSearchMode ? (
+            {!isTicketSearchMode && selectedIssue ? (
               <button
                 type="button"
                 onClick={() => setIsTicketSearchMode(true)}
@@ -472,6 +489,17 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                   <span className="ml-auto text-[10px] text-muted-foreground">{t("timeEntry.clickToChange")}</span>
                 </div>
                 <TruncatedTicketSubject subject={selectedIssue.subject} />
+              </button>
+            ) : !isTicketSearchMode ? (
+              <button
+                type="button"
+                onClick={() => setIsTicketSearchMode(true)}
+                className="w-full rounded-lg bg-muted border border-border p-3 text-left hover:bg-surface-high transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm text-muted-foreground">{t("timeEntry.selectTicket")}</span>
+                </div>
               </button>
             ) : (
               <div ref={ticketSearchWrapperRef} className="relative">
@@ -708,7 +736,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isSaving || isDeleting || !activityId || isTicketSearchMode}
+              disabled={isSaving || isDeleting || !activityId || isTicketSearchMode || !selectedIssue}
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             >
               {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}

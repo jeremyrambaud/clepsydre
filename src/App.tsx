@@ -2,10 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { enable as enableAutostart, disable as disableAutostart } from "@tauri-apps/plugin-autostart";
+import { useTheme } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TimerView } from "@/components/TimerView";
+import { AnalyticsView } from "@/components/AnalyticsView";
 import { SettingsView } from "@/components/SettingsView";
 import { UpdateDialog } from "@/components/UpdateDialog";
 import { SwitchTimerDialog } from "@/components/SwitchTimerDialog";
@@ -27,6 +29,7 @@ function App() {
   const checkIntervalMinutes = useSettingsStore((s) => s.settings.check_interval_minutes);
   const updateChannel = useSettingsStore((s) => s.settings.update_channel);
   const language = useSettingsStore((s) => s.settings.language);
+  const theme = useSettingsStore((s) => s.settings.theme);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const apiKey = useSettingsStore((s) => s.settings.api_key);
   const syncActivities = useSettingsStore((s) => s.syncActivities);
@@ -34,6 +37,7 @@ function App() {
   const lastSyncedAt = useSettingsStore((s) => s.lastSyncedAt);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const setSettings = useSettingsStore((s) => s.setSettings);
+  const { setTheme } = useTheme();
   const systemLanguageSyncRef = useRef(false);
 
   useEffect(() => {
@@ -76,6 +80,10 @@ function App() {
       void i18n.changeLanguage(language);
     }
   }, [i18n, language]);
+
+  useEffect(() => {
+    setTheme(theme);
+  }, [setTheme, theme]);
 
   useEffect(() => {
     if (!settingsLoaded) return;
@@ -146,9 +154,10 @@ function App() {
         )}
         {currentView === "settings" && <SettingsView />}
         {currentView === "analytics" && (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            {t("app.analyticsComingSoon")}
-          </div>
+          <AnalyticsView
+            onCreateEntry={() => setCurrentView("timer")}
+            onOpenDetails={() => setCurrentView("history")}
+          />
         )}
         {currentView === "history" && (
           <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -164,7 +173,7 @@ function App() {
         onCancel={() => setPendingSwitchIssueId(null)}
       />
       <UpdateDialog />
-      <Toaster position="bottom-right" theme="dark" />
+      <Toaster position="bottom-right" />
     </TooltipProvider>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Clock, LayoutDashboard, History, Settings, Pause, Square, RefreshCw } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Clock, LayoutDashboard, History, Settings, Pause, Square, RefreshCw, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useTimer } from "@/hooks/useTimer";
@@ -132,19 +133,58 @@ function SyncStatusBar() {
             {syncLabel}
           </span>
         </div>
+        <div className="flex items-center">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                onClick={syncActivities}
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t("sidebar.sync.tooltip")}</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ThemeSwitcherBar() {
+  const { t } = useTranslation();
+  const { settings, setSettings } = useSettingsStore();
+  const { resolvedTheme } = useTheme();
+
+  const currentTheme = resolvedTheme ?? settings.theme;
+  const isDarkTheme = currentTheme === "dark";
+  const activeThemeLabel = currentTheme === "light"
+    ? t("sidebar.theme.light")
+    : currentTheme === "dark"
+      ? t("sidebar.theme.dark")
+      : t("sidebar.theme.system");
+  const themeTooltip = isDarkTheme ? t("sidebar.theme.switchToLight") : t("sidebar.theme.switchToDark");
+
+  return (
+    <div className="px-5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-muted-foreground">{`${t("sidebar.theme.label")} ${activeThemeLabel}`}</span>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               className="w-7 h-7 text-muted-foreground hover:text-foreground"
-              onClick={syncActivities}
-              disabled={isSyncing}
+              onClick={() => setSettings({ theme: isDarkTheme ? "light" : "dark" })}
+              aria-label={themeTooltip}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              {isDarkTheme ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">{t("sidebar.sync.tooltip")}</TooltipContent>
+          <TooltipContent side="right">{themeTooltip}</TooltipContent>
         </Tooltip>
       </div>
     </div>
@@ -212,6 +252,7 @@ export function Sidebar({ currentView, onNavigate, timer }: SidebarProps) {
         {currentView !== "timer" && (
           <MiniTimerWidget timer={timer} issue={selectedIssue} />
         )}
+        <ThemeSwitcherBar />
         <SyncStatusBar />
       </div>
     </aside>

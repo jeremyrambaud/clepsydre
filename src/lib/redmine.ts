@@ -17,6 +17,127 @@ const SEARCH_RESULT_LIMIT = 30;
 const COMMENT_SEARCH_PAGE_SIZE = 100;
 const COMMENT_SEARCH_MAX_SCANNED_ENTRIES = 500;
 const COMMENT_SEARCH_MAX_MATCHED_ISSUES = 80;
+const LOCAL_ENTRY_TIMES_STORAGE_KEY = "clepsydre-entry-times-by-domain-v1";
+
+interface PersistedEntryTimes {
+  startedAt: string;
+  stoppedAt: string;
+  updatedAt: string;
+}
+
+type PersistedEntryTimesByDomain = Record<string, Record<string, PersistedEntryTimes>>;
+
+function normalizeRedmineDomainKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${pathname}`;
+  } catch {
+    return url.replace(/\/+$/, "");
+  }
+}
+
+function isValidTimeHHMM(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function readPersistedEntryTimes(): PersistedEntryTimesByDomain {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = window.localStorage.getItem(LOCAL_ENTRY_TIMES_STORAGE_KEY);
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+
+    return parsed as PersistedEntryTimesByDomain;
+  } catch {
+    return {};
+  }
+}
+
+function writePersistedEntryTimes(data: PersistedEntryTimesByDomain): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(LOCAL_ENTRY_TIMES_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore persistence failures and keep app behavior unchanged.
+  }
+}
+
+function getPersistedTimesForEntry(domainUrl: string, entryId: number): PersistedEntryTimes | null {
+  const domainKey = normalizeRedmineDomainKey(domainUrl);
+  const all = readPersistedEntryTimes();
+  const fromDomain = all[domainKey]?.[String(entryId)];
+
+  if (!fromDomain) return null;
+  if (!isValidTimeHHMM(fromDomain.startedAt) || !isValidTimeHHMM(fromDomain.stoppedAt)) return null;
+
+  return fromDomain;
+}
+
+function fallbackTimesFromCreatedAt(entry: RedmineTimeEntry): { startedAt: string; stoppedAt: string } {
+  const created = new Date(entry.created_on);
+  const durationMinutes = Math.round(entry.hours * 60);
+  const endMinutes = created.getHours() * 60 + created.getMinutes();
+  const startMinutes = endMinutes - durationMinutes;
+
+  const startH = Math.floor(Math.max(0, startMinutes) / 60);
+  const startM = Math.max(0, startMinutes) % 60;
+  const endH = Math.floor(endMinutes / 60) % 24;
+  const endM = endMinutes % 60;
+
+  return {
+    startedAt: `${startH.toString().padStart(2, "0")}:${startM.toString().padStart(2, "0")}`,
+    stoppedAt: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`,
+  };
+}
+
+function resolveEntryTimes(domainUrl: string, entry: RedmineTimeEntry): { startedAt: string; stoppedAt: string } {
+  const persisted = getPersistedTimesForEntry(domainUrl, entry.id);
+  if (persisted) {
+    return {
+      startedAt: persisted.startedAt,
+      stoppedAt: persisted.stoppedAt,
+    };
+  }
+
+  return fallbackTimesFromCreatedAt(entry);
+}
+
+function persistEntryTimesForDomain(
+  domainUrl: string,
+  entryId: number,
+  startedAt: string,
+  stoppedAt: string
+): void {
+  if (!isValidTimeHHMM(startedAt) || !isValidTimeHHMM(stoppedAt)) return;
+
+  const domainKey = normalizeRedmineDomainKey(domainUrl);
+  const all = readPersistedEntryTimes();
+
+  all[domainKey] = {
+    ...(all[domainKey] ?? {}),
+    [String(entryId)]: {
+      startedAt,
+      stoppedAt,
+      updatedAt: new Date().toISOString(),
+    },
+  };
+
+  writePersistedEntryTimes(all);
+}
+
+export async function persistEntryTimesForCurrentDomain(
+  entryId: number,
+  startedAt: string,
+  stoppedAt: string
+): Promise<void> {
+  const { url } = await getCredentials();
+  persistEntryTimesForDomain(url, entryId, startedAt, stoppedAt);
+}
 
 function normalizeSearchText(value: string): string {
   return value
@@ -573,6 +694,78 @@ export interface FetchTimeEntriesResult {
   totalCount: number;
 }
 
+export async function fetchTimeEntriesForDateRange(from: string, to: string): Promise<WorkSession[]> {
+  const { url, apiKey } = await getCredentials();
+  const pageSize = 100;
+  let offset = 0;
+  let totalCount = 0;
+  const allTimeEntries: RedmineTimeEntry[] = [];
+
+  do {
+    const params = new URLSearchParams({
+      user_id: "me",
+      limit: String(pageSize),
+      offset: String(offset),
+      from,
+      to,
+      sort: "spent_on:desc",
+    });
+
+    const resp = await fetch(`${url}/time_entries.json?${params}`, {
+      headers: { "X-Redmine-API-Key": apiKey },
+      danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+    });
+
+    if (!resp.ok) {
+      throw new Error(i18n.t("redmine.fetchEntriesFailed", { status: resp.status }));
+    }
+
+    const data = (await resp.json()) as {
+      time_entries: RedmineTimeEntry[];
+      total_count: number;
+    };
+
+    allTimeEntries.push(...data.time_entries);
+    totalCount = data.total_count;
+    offset += data.time_entries.length;
+
+    if (data.time_entries.length === 0) {
+      break;
+    }
+  } while (offset < totalCount);
+
+  const issueIds = [...new Set(allTimeEntries.map((entry) => entry.issue.id))];
+  const issueResults = await Promise.allSettled(
+    issueIds.map((id) => fetchIssue(id))
+  );
+
+  const issueMap = new Map<number, RedmineIssue>();
+  issueResults.forEach((result) => {
+    if (result.status === "fulfilled") {
+      issueMap.set(result.value.id, result.value);
+    }
+  });
+
+  return allTimeEntries
+    .filter((entry) => issueMap.has(entry.issue.id))
+    .map((entry) => {
+      const { startedAt, stoppedAt } = resolveEntryTimes(url, entry);
+
+      return {
+        id: `redmine-${entry.id}`,
+        issue: issueMap.get(entry.issue.id)!,
+        hours: entry.hours,
+        activityId: entry.activity.id,
+        comments: entry.comments || "",
+        spentOn: entry.spent_on,
+        startedAt,
+        stoppedAt,
+        redmineEntryId: entry.id,
+        createdAt: entry.created_on,
+      } satisfies WorkSession;
+    });
+}
+
 export async function fetchRecentTimeEntries(
   offset = 0,
   limit = 10
@@ -612,15 +805,7 @@ export async function fetchRecentTimeEntries(
   const sessions = data.time_entries
     .filter((entry) => issueMap.has(entry.issue.id))
     .map((entry) => {
-      const created = new Date(entry.created_on);
-      const durationMinutes = Math.round(entry.hours * 60);
-      const endMinutes = created.getHours() * 60 + created.getMinutes();
-      const startMinutes = endMinutes - durationMinutes;
-
-      const startH = Math.floor(Math.max(0, startMinutes) / 60);
-      const startM = Math.max(0, startMinutes) % 60;
-      const endH = Math.floor(endMinutes / 60) % 24;
-      const endM = endMinutes % 60;
+      const { startedAt, stoppedAt } = resolveEntryTimes(url, entry);
 
       return {
         id: `redmine-${entry.id}`,
@@ -629,8 +814,8 @@ export async function fetchRecentTimeEntries(
         activityId: entry.activity.id,
         comments: entry.comments || "",
         spentOn: entry.spent_on,
-        startedAt: `${startH.toString().padStart(2, "0")}:${startM.toString().padStart(2, "0")}`,
-        stoppedAt: `${endH.toString().padStart(2, "0")}:${endM.toString().padStart(2, "0")}`,
+        startedAt,
+        stoppedAt,
         redmineEntryId: entry.id,
         createdAt: entry.created_on,
       } satisfies WorkSession;

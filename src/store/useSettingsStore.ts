@@ -36,6 +36,9 @@ const defaultSettings: UserSettings = {
   check_interval_minutes: 5,
   search_in_time_comments: false,
   idle_threshold_minutes: 15,
+  daily_work_hours: 7,
+  daily_work_tolerance_minutes: 60,
+  show_weekends_in_weekly_activity: true,
   theme: "dark",
 };
 

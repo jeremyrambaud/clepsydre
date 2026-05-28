@@ -555,6 +555,50 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setManualIssue(null);
   }
 
+  const handleSelectIssueFromSearch = useCallback((issue: RedmineIssue, matchedComment?: string) => {
+    const nextComment = matchedComment?.trim() ?? "";
+
+    if (timer.isRunning && selectedIssue && selectedIssue.id !== issue.id) {
+      pendingSwitchIssueRef.current = issue;
+      pendingSwitchCommentRef.current = nextComment;
+      void finalizeStopFlow(undefined, {
+        keepRunningAfterCreateSave: false,
+        forceCreateModal: true,
+      });
+      return;
+    }
+
+    if (nextComment) {
+      draftCommentRequestRef.current += 1;
+      setActiveCommentDraft(nextComment);
+      if (selectedIssue?.id !== issue.id) {
+        skipNextIssuePrefillRef.current = true;
+      }
+    }
+
+    if (selectedIssue?.id !== issue.id) {
+      setSelectedIssue(issue);
+    }
+
+    if (!timer.isRunning) {
+      timer.start();
+      return;
+    }
+
+    if (timer.isPaused) {
+      timer.resume();
+    }
+  }, [finalizeStopFlow, selectedIssue, setSelectedIssue, timer]);
+
+  const handleSwitchActiveTicketKeepElapsed = useCallback((issue: RedmineIssue) => {
+    if (selectedIssue?.id === issue.id) return;
+
+    // Keep the current draft exactly as-is when switching via the active-ticket bar.
+    skipNextIssuePrefillRef.current = true;
+
+    setSelectedIssue(issue);
+  }, [selectedIssue?.id, setSelectedIssue]);
+
   const activeTimelineSession = useMemo<WorkSession | null>(() => {
     if (!selectedIssue || !timer.isRunning) return null;
 
@@ -579,46 +623,14 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       <div className="shrink-0 space-y-6 pb-4">
         <SearchBar
           onManualEntry={handleOpenManualEntryForIssue}
-          onIssueSelected={(issue, matchedComment) => {
-            const nextComment = matchedComment?.trim() ?? "";
-
-            if (timer.isRunning && selectedIssue && selectedIssue.id !== issue.id) {
-              pendingSwitchIssueRef.current = issue;
-              pendingSwitchCommentRef.current = nextComment;
-              void finalizeStopFlow(undefined, {
-                keepRunningAfterCreateSave: false,
-                forceCreateModal: true,
-              });
-              return;
-            }
-
-            if (nextComment) {
-              draftCommentRequestRef.current += 1;
-              setActiveCommentDraft(nextComment);
-              if (selectedIssue?.id !== issue.id) {
-                skipNextIssuePrefillRef.current = true;
-              }
-            }
-
-            if (selectedIssue?.id !== issue.id) {
-              setSelectedIssue(issue);
-            }
-
-            if (!timer.isRunning) {
-              timer.start();
-              return;
-            }
-
-            if (timer.isPaused) {
-              timer.resume();
-            }
-          }}
+          onIssueSelected={handleSelectIssueFromSearch}
         />
         <ActiveTicketSection
           timer={timer}
           onReset={handleResetActiveTicket}
           onStop={handleStop}
           onClearIssue={() => { void handleClearActiveIssue(); }}
+          onSwitchIssue={handleSwitchActiveTicketKeepElapsed}
           onManualEntry={handleOpenManualEntry}
           commentDraft={activeCommentDraft}
           onCommentDraftChange={setActiveCommentDraft}

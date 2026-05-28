@@ -1,14 +1,17 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2, Pause, Play, Square, Clock, ExternalLink, X } from "lucide-react";
+import { Trash2, Pause, Play, Square, Clock, ExternalLink, X, Pencil } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SearchBar } from "@/components/SearchBar";
 import { useIssueStore, useSettingsStore } from "@/store";
 import { useTimer } from "@/hooks/useTimer";
 import { fetchIssueTodayLoggedHours } from "@/lib/redmine";
+import type { RedmineIssue } from "@/types";
 
 const COMMENT_EDITOR_SIZE_STORAGE_KEY = "clepsydre-draft-comment-editor-size";
 const COMMENT_EDITOR_MIN_WIDTH = 280;
@@ -82,6 +85,7 @@ interface ActiveTicketSectionProps {
   onReset?: () => void;
   onStop?: () => void;
   onClearIssue?: () => void;
+  onSwitchIssue?: (issue: RedmineIssue, matchedComment?: string) => void;
   onManualEntry?: () => void;
   commentDraft?: string;
   onCommentDraftChange?: (comment: string) => void;
@@ -120,12 +124,14 @@ function TruncatedDraftComment({ comment }: { comment: string }) {
   );
 }
 
-export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onManualEntry, commentDraft = "", onCommentDraftChange }: ActiveTicketSectionProps) {
+export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSwitchIssue, onManualEntry, commentDraft = "", onCommentDraftChange }: ActiveTicketSectionProps) {
   const { t } = useTranslation();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
+  const setSearchQuery = useIssueStore((s) => s.setSearchQuery);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [isSwitchTicketOpen, setIsSwitchTicketOpen] = useState(false);
   const [isCommentEditorOpen, setIsCommentEditorOpen] = useState(false);
   const [commentEditorValue, setCommentEditorValue] = useState("");
   const [commentEditorSize, setCommentEditorSize] = useState<{ width: number; height: number }>(() => readStoredCommentEditorSize());
@@ -211,6 +217,23 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
     setIsCommentEditorOpen(false);
   }, [commentEditorValue, onCommentDraftChange]);
 
+  const handleSwitchDialogOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      setSearchQuery("");
+    }
+    setIsSwitchTicketOpen(nextOpen);
+  }, [setSearchQuery]);
+
+  const handleSwitchTicketSelected = useCallback((issue: RedmineIssue, matchedComment?: string) => {
+    if (issue.id === selectedIssue?.id) {
+      handleSwitchDialogOpenChange(false);
+      return;
+    }
+
+    onSwitchIssue?.(issue, matchedComment);
+    handleSwitchDialogOpenChange(false);
+  }, [handleSwitchDialogOpenChange, onSwitchIssue, selectedIssue?.id]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -279,6 +302,21 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
                   </TooltipTrigger>
                   <TooltipContent>{t("activeTicket.openInRedmine")}</TooltipContent>
                 </Tooltip>
+                {onSwitchIssue && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-6 h-6 text-muted-foreground hover:text-foreground"
+                        onClick={() => handleSwitchDialogOpenChange(true)}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("activeTicket.switchTicket")}</TooltipContent>
+                  </Tooltip>
+                )}
                 {onClearIssue && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -575,6 +613,18 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onMa
           </div>
         </div>
       </div>
+
+      <Dialog open={isSwitchTicketOpen} onOpenChange={handleSwitchDialogOpenChange}>
+        <DialogContent className="bg-card border-border sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("activeTicket.switchTicketTitle")}</DialogTitle>
+            <DialogDescription>{t("activeTicket.switchTicketDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="pt-1">
+            <SearchBar onIssueSelected={handleSwitchTicketSelected} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { AnalyticsView } from "@/components/AnalyticsView";
 import { SettingsView } from "@/components/SettingsView";
 import { UpdateDialog } from "@/components/UpdateDialog";
 import { SwitchTimerDialog } from "@/components/SwitchTimerDialog";
+import { OnboardingDialog } from "@/components/OnboardingDialog";
 import { useTimer } from "@/hooks/useTimer";
 import { useIntegrationBridge } from "@/hooks/useIntegrationBridge";
 import { useSettingsStore, useUpdaterStore, useIssueStore } from "@/store";
@@ -22,6 +23,9 @@ function App() {
   const { t, i18n } = useTranslation();
   const [currentView, setCurrentView] = useState<View>("timer");
   const [pendingSwitchIssueId, setPendingSwitchIssueId] = useState<number | null>(null);
+  const [credentialsLoaded, setCredentialsLoaded] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [activeViewRefreshToken, setActiveViewRefreshToken] = useState(0);
   const timer = useTimer();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const minimizeToTray = useSettingsStore((s) => s.settings.minimize_to_tray);
@@ -37,8 +41,36 @@ function App() {
   const lastSyncedAt = useSettingsStore((s) => s.lastSyncedAt);
   const settingsLoaded = useSettingsStore((s) => s.loaded);
   const setSettings = useSettingsStore((s) => s.setSettings);
+  const loadCredentials = useSettingsStore((s) => s.loadCredentials);
   const { setTheme } = useTheme();
   const systemLanguageSyncRef = useRef(false);
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    let cancelled = false;
+
+    void loadCredentials().finally(() => {
+      if (!cancelled) {
+        setCredentialsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadCredentials, settingsLoaded]);
+
+  useEffect(() => {
+    if (!settingsLoaded || !credentialsLoaded) return;
+
+    const noRedmineDomain = redmineUrl.trim().length === 0;
+    const noApiKey = apiKey.trim().length === 0;
+    const shouldOpenOnboarding = noRedmineDomain || noApiKey;
+
+    if (shouldOpenOnboarding) {
+      setOnboardingOpen(true);
+    }
+  }, [apiKey, credentialsLoaded, redmineUrl, settingsLoaded]);
 
   useEffect(() => {
     if (!settingsLoaded || systemLanguageSyncRef.current) return;
@@ -138,6 +170,11 @@ function App() {
     setCurrentView("timer");
   }, []);
 
+  const handleOnboardingComplete = useCallback(() => {
+    setOnboardingOpen(false);
+    setActiveViewRefreshToken((token) => token + 1);
+  }, []);
+
   useIntegrationBridge({ timer, onSwitchRequest: handleSwitchRequest, onStopRequest: handleStopRequest });
 
   return (
@@ -145,6 +182,7 @@ function App() {
       <AppLayout currentView={currentView} onNavigate={setCurrentView} timer={timer}>
         {currentView === "timer" && (
           <TimerView
+            key={`timer-${activeViewRefreshToken}`}
             timer={timer}
             pendingSwitchIssueId={pendingSwitchIssueId}
             onPendingSwitchHandled={() => setPendingSwitchIssueId(null)}
@@ -152,15 +190,16 @@ function App() {
             onExternalStopHandled={() => setExternalStopRequested(false)}
           />
         )}
-        {currentView === "settings" && <SettingsView />}
+        {currentView === "settings" && <SettingsView key={`settings-${activeViewRefreshToken}`} />}
         {currentView === "analytics" && (
           <AnalyticsView
+            key={`analytics-${activeViewRefreshToken}`}
             onCreateEntry={() => setCurrentView("timer")}
             onOpenDetails={() => setCurrentView("history")}
           />
         )}
         {currentView === "history" && (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
+          <div key={`history-${activeViewRefreshToken}`} className="flex items-center justify-center h-full text-muted-foreground">
             {t("app.historyComingSoon")}
           </div>
         )}
@@ -172,6 +211,7 @@ function App() {
         onConfirm={() => setCurrentView("timer")}
         onCancel={() => setPendingSwitchIssueId(null)}
       />
+      <OnboardingDialog open={onboardingOpen} onComplete={handleOnboardingComplete} />
       <UpdateDialog />
       <Toaster position="bottom-right" />
     </TooltipProvider>

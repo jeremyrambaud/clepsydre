@@ -16,7 +16,7 @@ interface SettingsState {
   setSettings: (settings: Partial<UserSettings>) => void;
   saveSettings: (settings: Partial<UserSettings>) => Promise<void>;
   loadCredentials: () => Promise<void>;
-  resetSettings: () => void;
+  resetSettings: () => Promise<void>;
   syncActivities: () => Promise<void>;
   setActivities: (activities: RedmineActivity[]) => void;
 }
@@ -86,7 +86,18 @@ export const useSettingsStore = create<SettingsState>()(
         }
       },
 
-      resetSettings: () => set({ settings: { ...defaultSettings } }),
+      resetSettings: async () => {
+        try {
+          await invoke("delete_api_key");
+        } catch (e) {
+          console.error("Failed to delete API key from keyring:", e);
+        }
+
+        set({
+          settings: { ...defaultSettings },
+          lastSyncedAt: null,
+        });
+      },
 
       setActivities: (activities) => set({ activities }),
 

@@ -11,6 +11,8 @@ interface RecentTicketsProps {
   activeTimelineSession?: WorkSession | null;
   onSelectSession: (session: WorkSession) => void;
   onEditSession: (session: WorkSession) => void;
+  onDuplicateSession: (session: WorkSession) => void;
+  onDeleteSession: (session: WorkSession) => void;
 }
 
 function formatDayLabel(dateStr: string, locale: string, t: (key: string) => string): string {
@@ -28,7 +30,7 @@ function formatDayLabel(dateStr: string, locale: string, t: (key: string) => str
   });
 }
 
-export function RecentTickets({ activeTimelineSession, onSelectSession, onEditSession }: RecentTicketsProps) {
+export function RecentTickets({ activeTimelineSession, onSelectSession, onEditSession, onDuplicateSession, onDeleteSession }: RecentTicketsProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
   const [resolvedDayStats, setResolvedDayStats] = useState<Record<string, UserDayStats>>({});
@@ -238,6 +240,8 @@ export function RecentTickets({ activeTimelineSession, onSelectSession, onEditSe
                 isActiveTimelineEntry={isActiveTimelineEntry}
                 onSelect={onSelectSession}
                 onEdit={onEditSession}
+                onDuplicate={onDuplicateSession}
+                onDelete={onDeleteSession}
                 isLast={isLastOfDay || isLast}
               />
             </div>

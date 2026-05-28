@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTimer } from "@/hooks/useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
-import { logTimeEntry, fetchIssue, fetchLatestIssueComment, persistEntryTimesForCurrentDomain } from "@/lib/redmine";
+import { logTimeEntry, fetchIssue, fetchLatestIssueComment, persistEntryTimesForCurrentDomain, deleteTimeEntry } from "@/lib/redmine";
 import { toast } from "sonner";
 import type { RedmineIssue, WorkSession } from "@/types";
 
@@ -68,6 +68,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualIssue, setManualIssue] = useState(selectedIssue);
   const [manualAnchorTime, setManualAnchorTime] = useState<Date>(new Date());
+  const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
+  const [duplicatingSession, setDuplicatingSession] = useState<WorkSession | null>(null);
+  const [deleteEntryModalOpen, setDeleteEntryModalOpen] = useState(false);
+  const [deletingSession, setDeletingSession] = useState<WorkSession | null>(null);
+  const [isDeletingSession, setIsDeletingSession] = useState(false);
   const [activeCommentDraft, setActiveCommentDraft] = useState("");
   const draftCommentRequestRef = useRef(0);
   const skipNextIssuePrefillRef = useRef(false);
@@ -555,6 +560,56 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setManualIssue(null);
   }
 
+  function handleDuplicateSession(session: WorkSession) {
+    setDuplicatingSession(session);
+    setDuplicateModalOpen(true);
+  }
+
+  function handleDuplicateSaved(issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+    const session = buildSession(
+      issue,
+      hours,
+      activityId,
+      comments,
+      spentOn,
+      entryId,
+      new Date(),
+      new Date()
+    );
+    session.startedAt = startedAt;
+    session.stoppedAt = stoppedAt;
+    addSession(session);
+    useIssueStore.getState().refreshIssues();
+
+    setDuplicateModalOpen(false);
+    setDuplicatingSession(null);
+  }
+
+  function handleRequestDeleteSession(session: WorkSession) {
+    if (!session.redmineEntryId) return;
+    setDeletingSession(session);
+    setDeleteEntryModalOpen(true);
+  }
+
+  const handleConfirmDeleteSession = useCallback(async () => {
+    if (!deletingSession?.redmineEntryId) return;
+
+    setIsDeletingSession(true);
+    try {
+      await deleteTimeEntry(deletingSession.redmineEntryId);
+      useIssueStore.getState().removeSession(deletingSession.id);
+      toast.success(t("timeEntry.deleteSuccess"));
+    } catch (err) {
+      toast.error(t("timeEntry.deleteFailed"), {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsDeletingSession(false);
+      setDeleteEntryModalOpen(false);
+      setDeletingSession(null);
+    }
+  }, [deletingSession, t]);
+
   const handleSelectIssueFromSearch = useCallback((issue: RedmineIssue, matchedComment?: string) => {
     const nextComment = matchedComment?.trim() ?? "";
 
@@ -641,6 +696,8 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           activeTimelineSession={activeTimelineSession}
           onSelectSession={handleSelectFromSession}
           onEditSession={handleEditSession}
+          onDuplicateSession={handleDuplicateSession}
+          onDeleteSession={handleRequestDeleteSession}
         />
       </div>
 
@@ -712,6 +769,57 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           stoppedAt={formatHHMM(manualAnchorTime)}
         />
       )}
+
+      {duplicatingSession && (
+        <TimeEntryModal
+          mode="create"
+          intent="duplicate"
+          open={duplicateModalOpen}
+          onClose={() => {
+            setDuplicateModalOpen(false);
+            setDuplicatingSession(null);
+          }}
+          onSaved={handleDuplicateSaved}
+          issue={duplicatingSession.issue}
+          initialSpentOn={duplicatingSession.spentOn}
+          initialActivityId={duplicatingSession.activityId}
+          elapsedSeconds={Math.round(duplicatingSession.hours * 3600)}
+          startedAt={duplicatingSession.startedAt}
+          stoppedAt={duplicatingSession.stoppedAt}
+          initialComment={duplicatingSession.comments}
+        />
+      )}
+
+      <Dialog open={deleteEntryModalOpen} onOpenChange={(open) => {
+        if (!isDeletingSession) {
+          setDeleteEntryModalOpen(open);
+          if (!open) {
+            setDeletingSession(null);
+          }
+        }
+      }}>
+        <DialogContent className="bg-card border-border sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("timeEntry.deleteConfirmTitle")}</DialogTitle>
+            <DialogDescription>{t("timeEntry.deleteConfirmDescription", {
+              issueId: deletingSession?.issue.id ?? "",
+              start: deletingSession?.startedAt ?? "--:--",
+              end: deletingSession?.stoppedAt ?? "--:--",
+            })}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => {
+              setDeleteEntryModalOpen(false);
+              setDeletingSession(null);
+            }} disabled={isDeletingSession}>
+              {t("timeEntry.discard")}
+            </Button>
+            <Button variant="destructive" onClick={() => { void handleConfirmDeleteSession(); }} disabled={isDeletingSession}>
+              {isDeletingSession ? t("timeEntry.saving") : t("timeEntry.confirm")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={idleDecisionSeconds !== null} onOpenChange={(open) => {
         if (!open) {

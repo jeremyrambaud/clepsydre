@@ -46,8 +46,10 @@ interface BaseModalProps {
 
 interface CreateModalProps extends BaseModalProps {
   mode: "create";
+  intent?: "create" | "duplicate";
   issue?: RedmineIssue | null;
   initialSpentOn?: string;
+  initialActivityId?: number;
   elapsedSeconds: number;
   startedAt: string;
   stoppedAt: string;
@@ -150,6 +152,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   const { settings, activities, setActivities } = useSettingsStore();
 
   const isEdit = props.mode === "edit";
+  const isDuplicateIntent = !isEdit && props.intent === "duplicate";
   const initialIssue = isEdit ? props.issue : props.issue ?? null;
 
   const defaults = isEdit
@@ -164,7 +167,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     : {
         duration: secondsToTimeValue(props.elapsedSeconds),
         date: props.initialSpentOn ?? formatDate(new Date()),
-        activity: settings.default_activity_id?.toString() ?? "",
+        activity: props.initialActivityId?.toString() ?? settings.default_activity_id?.toString() ?? "",
         comments: props.initialComment ?? settings.default_comment,
         start: props.startedAt ?? formatHHMM(new Date()),
         stop: props.stoppedAt ?? formatHHMM(new Date()),
@@ -437,7 +440,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           spentOn,
         });
         await persistEntryTimesForCurrentDomain(entryId, startTime, stopTime);
-        toast.success(t("timeEntry.logged"), {
+        toast.success(isDuplicateIntent ? t("timeEntry.duplicated") : t("timeEntry.logged"), {
           description: t("timeEntry.loggedDescription", {
             duration,
             issueId: selectedIssue.id,
@@ -465,7 +468,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-heading">
             <Clock className="w-5 h-5 text-primary" />
-            {isEdit ? t("timeEntry.titleEdit") : t("timeEntry.titleCreate")}
+            {isEdit ? t("timeEntry.titleEdit") : isDuplicateIntent ? t("timeEntry.titleDuplicate") : t("timeEntry.titleCreate")}
           </DialogTitle>
         </DialogHeader>
 
@@ -740,7 +743,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             >
               {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSaving ? t("timeEntry.saving") : isEdit ? t("timeEntry.update") : t("timeEntry.logTime")}
+              {isSaving ? t("timeEntry.saving") : isEdit ? t("timeEntry.update") : isDuplicateIntent ? t("timeEntry.duplicate") : t("timeEntry.logTime")}
             </Button>
           </div>
         </DialogFooter>

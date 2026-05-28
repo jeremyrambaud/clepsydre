@@ -146,12 +146,18 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     }
 
     setSelectedIssue(nextIssue);
-    timer.start();
+    if (settings.auto_start_timer_on_task_select) {
+      timer.start();
+    } else {
+      timer.reset();
+    }
     return true;
-  }, [applyDraftCommentForIssue, setSelectedIssue, settings.prefill_last_comment_on_timer_start, timer]);
+  }, [applyDraftCommentForIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, settings.prefill_last_comment_on_timer_start, timer]);
 
   function handleSelectFromSession(session: WorkSession) {
-    if (timer.isRunning && selectedIssue && selectedIssue.id !== session.issue.id) {
+    const issueChanged = selectedIssue?.id !== session.issue.id;
+
+    if (timer.isRunning && selectedIssue && issueChanged) {
       pendingSwitchIssueRef.current = session.issue;
       pendingSwitchCommentRef.current = session.comments.trim();
       void finalizeStopFlow(undefined, {
@@ -166,13 +172,20 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       draftCommentRequestRef.current += 1;
       setActiveCommentDraft(session.comments.trim());
 
-      if (selectedIssue?.id !== session.issue.id) {
+      if (issueChanged) {
         skipNextIssuePrefillRef.current = true;
       }
     }
 
-    if (selectedIssue?.id !== session.issue.id) {
+    if (issueChanged) {
       setSelectedIssue(session.issue);
+    }
+
+    if (!settings.auto_start_timer_on_task_select) {
+      if (issueChanged && !timer.isRunning) {
+        timer.reset();
+      }
+      return;
     }
 
     if (!timer.isRunning) {
@@ -611,9 +624,10 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   }, [deletingSession, t]);
 
   const handleSelectIssueFromSearch = useCallback((issue: RedmineIssue, matchedComment?: string) => {
+    const issueChanged = selectedIssue?.id !== issue.id;
     const nextComment = matchedComment?.trim() ?? "";
 
-    if (timer.isRunning && selectedIssue && selectedIssue.id !== issue.id) {
+    if (timer.isRunning && selectedIssue && issueChanged) {
       pendingSwitchIssueRef.current = issue;
       pendingSwitchCommentRef.current = nextComment;
       void finalizeStopFlow(undefined, {
@@ -626,13 +640,20 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     if (nextComment) {
       draftCommentRequestRef.current += 1;
       setActiveCommentDraft(nextComment);
-      if (selectedIssue?.id !== issue.id) {
+      if (issueChanged) {
         skipNextIssuePrefillRef.current = true;
       }
     }
 
-    if (selectedIssue?.id !== issue.id) {
+    if (issueChanged) {
       setSelectedIssue(issue);
+    }
+
+    if (!settings.auto_start_timer_on_task_select) {
+      if (issueChanged && !timer.isRunning) {
+        timer.reset();
+      }
+      return;
     }
 
     if (!timer.isRunning) {
@@ -643,7 +664,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     if (timer.isPaused) {
       timer.resume();
     }
-  }, [finalizeStopFlow, selectedIssue, setSelectedIssue, timer]);
+  }, [finalizeStopFlow, selectedIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, timer]);
 
   const handleSwitchActiveTicketKeepElapsed = useCallback((issue: RedmineIssue) => {
     if (selectedIssue?.id === issue.id) return;

@@ -248,6 +248,8 @@ const fr = {
     prefillLastCommentHint: "Lors de la sélection d'un ticket, préremplit le brouillon avec votre dernier commentaire saisi sur ce ticket",
     searchInTimeComments: "Rechercher dans les commentaires des saisies",
     searchInTimeCommentsHint: "Si activé, la recherche de tickets inclut aussi vos commentaires de saisie de temps (expérimental et potentiellement plus lent)",
+    autoStartTimerOnTaskSelect: "Démarrer le timer à la sélection d'une tâche",
+    autoStartTimerOnTaskSelectHint: "Si activé, sélectionner une tâche (recherche ou timeline) démarre automatiquement le timer.",
     defaultActivity: "Activité par défaut",
     selectActivity: "Sélectionnez une activité",
     noDefaultActivity: "Aucune activité par défaut",

@@ -64,6 +64,7 @@ export interface UserSettings {
   language: "en" | "fr";
   default_activity_id: number | null;
   default_comment: string;
+  auto_start_timer_on_task_select: boolean;
   prefill_last_comment_on_timer_start: boolean;
   express_entry: boolean;
   idle_detection_enabled: boolean;

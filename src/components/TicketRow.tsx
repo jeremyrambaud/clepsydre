@@ -1,9 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Play, Pencil, ExternalLink } from "lucide-react";
+import { Play, Pencil, ExternalLink, EllipsisVertical, Copy, Trash2 } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSettingsStore } from "@/store";
 import type { WorkSession } from "@/types";
 
@@ -45,6 +46,8 @@ interface TicketRowProps {
   isActiveTimelineEntry?: boolean;
   onSelect: (session: WorkSession) => void;
   onEdit: (session: WorkSession) => void;
+  onDuplicate: (session: WorkSession) => void;
+  onDelete: (session: WorkSession) => void;
   isLast?: boolean;
 }
 
@@ -54,9 +57,10 @@ function formatHoursMinutes(hours: number): string {
   return `${h}h ${m.toString().padStart(2, "0")}m`;
 }
 
-export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = false, onSelect, onEdit, isLast = false }: TicketRowProps) {
+export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = false, onSelect, onEdit, onDuplicate, onDelete, isLast = false }: TicketRowProps) {
   const { t } = useTranslation();
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const { issue } = session;
   const sessionComment = session.comments.trim();
   const estimated = issue.estimated_hours ?? 0;
@@ -202,22 +206,6 @@ export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = fa
 
           {/* Actions: cols 11-12 */}
           <div className="lg:col-span-2 flex items-center justify-end gap-1">
-            {!isActiveTimelineEntry && session.redmineEntryId && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="w-8 h-8 text-muted-foreground hover:text-foreground"
-                    onClick={() => onEdit(session)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{t("ticketRow.editEntry")}</TooltipContent>
-              </Tooltip>
-            )}
-
             {!isActiveTimelineEntry && (
               <>
                 <Tooltip>
@@ -246,6 +234,65 @@ export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = fa
                   </TooltipTrigger>
                   <TooltipContent>{t("ticketRow.startTimer")}</TooltipContent>
                 </Tooltip>
+
+                <Popover open={isActionsMenuOpen} onOpenChange={setIsActionsMenuOpen}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8 text-muted-foreground hover:text-foreground"
+                        >
+                          <EllipsisVertical className="w-4 h-4" />
+                        </Button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("ticketRow.moreActions")}</TooltipContent>
+                  </Tooltip>
+                  <PopoverContent side="bottom" align="end" className="w-44 p-1">
+                    {session.redmineEntryId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onEdit(session);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                        {t("ticketRow.editEntry")}
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2"
+                      onClick={() => {
+                        setIsActionsMenuOpen(false);
+                        onDuplicate(session);
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                      {t("ticketRow.duplicateEntry")}
+                    </Button>
+                    {session.redmineEntryId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setIsActionsMenuOpen(false);
+                          onDelete(session);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {t("ticketRow.deleteEntry")}
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </>
             )}
           </div>

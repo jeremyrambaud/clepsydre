@@ -11,7 +11,7 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
     LogicalSize, Manager, PhysicalPosition, Position, Size,
-    menu::MenuBuilder,
+    menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Window, WindowEvent,
 };
@@ -31,6 +31,39 @@ struct GithubReleaseResponse {
 
 const MIN_WINDOW_WIDTH: f64 = 390.0;
 const MIN_WINDOW_HEIGHT: f64 = 700.0;
+
+#[derive(Clone, Copy)]
+struct TrayI18n {
+    show: &'static str,
+    quit: &'static str,
+    current_ticket: &'static str,
+    current_time: &'static str,
+    none: &'static str,
+}
+
+fn tray_i18n() -> TrayI18n {
+    let is_french = sys_locale::get_locale()
+        .map(|locale| locale.to_lowercase().starts_with("fr"))
+        .unwrap_or(false);
+
+    if is_french {
+        TrayI18n {
+            show: "Afficher Clepsydre",
+            quit: "Quitter",
+            current_ticket: "Ticket en cours",
+            current_time: "Temps",
+            none: "Aucun",
+        }
+    } else {
+        TrayI18n {
+            show: "Show Clepsydre",
+            quit: "Quit",
+            current_ticket: "Current ticket",
+            current_time: "Elapsed",
+            none: "None",
+        }
+    }
+}
 
 #[derive(serde::Serialize, serde::Deserialize)]
 struct StoredWindowState {
@@ -194,9 +227,17 @@ fn compute_live_elapsed_seconds(state: &integration::TimerStatePayload) -> u32 {
     }
 }
 
-fn spawn_tray_timer_sync(app: tauri::AppHandle, timer_state: integration::SharedTimerState) {
+fn spawn_tray_timer_sync<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    timer_state: integration::SharedTimerState,
+    tray_ticket_item: tauri::menu::MenuItem<R>,
+    tray_time_item: tauri::menu::MenuItem<R>,
+    i18n: TrayI18n,
+) {
     thread::spawn(move || {
         let mut last_label: Option<String> = None;
+        let mut last_ticket_label: Option<String> = None;
+        let mut last_time_label: Option<String> = None;
 
         loop {
             let snapshot = match timer_state.lock() {
@@ -210,9 +251,25 @@ fn spawn_tray_timer_sync(app: tauri::AppHandle, timer_state: integration::Shared
             let next_label = match snapshot.status.as_str() {
                 "running" | "paused" => {
                     let elapsed = compute_live_elapsed_seconds(&snapshot);
-                    format_clock_timer(elapsed)
+                    match snapshot.issue_id {
+                        Some(issue_id) => format!("  {} (#{issue_id})", format_clock_timer(elapsed)),
+                        None => format!("  {}", format_clock_timer(elapsed)),
+                    }
                 }
                 _ => String::new(),
+            };
+
+            let next_ticket_label = match snapshot.issue_id {
+                Some(issue_id) => format!("{}: #{issue_id}", i18n.current_ticket),
+                None => format!("{}: {}", i18n.current_ticket, i18n.none),
+            };
+
+            let next_time_label = match snapshot.status.as_str() {
+                "running" | "paused" => {
+                    let elapsed = compute_live_elapsed_seconds(&snapshot);
+                    format!("{}: {}", i18n.current_time, format_clock_timer(elapsed))
+                }
+                _ => format!("{}: --:--:--", i18n.current_time),
             };
 
             if last_label.as_deref() != Some(next_label.as_str()) {
@@ -220,6 +277,16 @@ fn spawn_tray_timer_sync(app: tauri::AppHandle, timer_state: integration::Shared
                     let _ = tray.set_title(Some(next_label.as_str()));
                 }
                 last_label = Some(next_label);
+            }
+
+            if last_ticket_label.as_deref() != Some(next_ticket_label.as_str()) {
+                let _ = tray_ticket_item.set_text(next_ticket_label.as_str());
+                last_ticket_label = Some(next_ticket_label);
+            }
+
+            if last_time_label.as_deref() != Some(next_time_label.as_str()) {
+                let _ = tray_time_item.set_text(next_time_label.as_str());
+                last_time_label = Some(next_time_label);
             }
 
             thread::sleep(Duration::from_secs(1));
@@ -383,10 +450,28 @@ pub fn run() {
             idle::spawn_idle_monitor(app.handle().clone(), idle_monitor_state.clone());
             bridge_server::spawn_bridge_server(app.handle().clone(), timer_state.clone());
 
+            let i18n = tray_i18n();
+
+            let tray_ticket_item = MenuItemBuilder::with_id(
+                "tray-current-ticket",
+                format!("{}: {}", i18n.current_ticket, i18n.none),
+            )
+                .enabled(false)
+                .build(app)?;
+
+            let tray_time_item = MenuItemBuilder::with_id(
+                "tray-current-time",
+                format!("{}: --:--:--", i18n.current_time),
+            )
+                .enabled(false)
+                .build(app)?;
+
             let tray_menu = MenuBuilder::new(app)
-                .text("show", "Show Clepsydre")
+                .items(&[&tray_ticket_item, &tray_time_item])
                 .separator()
-                .quit()
+                .text("show", i18n.show)
+                .separator()
+                .text("quit", i18n.quit)
                 .build()?;
 
             let tray_icon_bytes: &[u8] = if cfg!(target_os = "windows") {
@@ -434,11 +519,19 @@ pub fn run() {
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
+                    } else if event.id().as_ref() == "quit" {
+                        app.exit(0);
                     }
                 })
                 .build(app)?;
 
-            spawn_tray_timer_sync(app.handle().clone(), timer_state.clone());
+            spawn_tray_timer_sync(
+                app.handle().clone(),
+                timer_state.clone(),
+                tray_ticket_item.clone(),
+                tray_time_item.clone(),
+                i18n,
+            );
 
             Ok(())
         })

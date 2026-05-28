@@ -383,6 +383,70 @@ export function SettingsView() {
             </div>
 
             <div className="py-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
+                  {t("settings.dailyWorkHours")}
+                </label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={24}
+                    step={0.5}
+                    value={draft.daily_work_hours}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      if (Number.isNaN(value)) return;
+                      setDraft({
+                        ...draft,
+                        daily_work_hours: Math.min(24, Math.max(1, value)),
+                      });
+                    }}
+                    className="bg-background border-border w-24"
+                  />
+                  <span className="text-xs text-muted-foreground">h</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("settings.dailyWorkHoursHint")}</p>
+              </div>
+            </div>
+
+            <div className="py-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium tracking-wide text-muted-foreground uppercase font-heading">
+                  {t("settings.dailyWorkTolerance")}
+                </label>
+                <div className="mt-2 flex items-center gap-4">
+                  <Slider
+                    value={[draft.daily_work_tolerance_minutes]}
+                    min={0}
+                    max={180}
+                    step={15}
+                    onValueChange={([v]) => setDraft({ ...draft, daily_work_tolerance_minutes: v })}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-semibold text-primary tabular-nums min-w-14 text-right">
+                    ±{draft.daily_work_tolerance_minutes} min
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("settings.dailyWorkToleranceHint")}</p>
+              </div>
+            </div>
+
+            <div className="py-4">
+              <SettingRow
+                title={t("settings.showWeekendsInWeeklyActivity")}
+                hint={t("settings.showWeekendsInWeeklyActivityHint")}
+                control={(
+                  <Switch
+                    checked={draft.show_weekends_in_weekly_activity}
+                    onCheckedChange={(checked) => setDraft({ ...draft, show_weekends_in_weekly_activity: checked })}
+                    className="data-[state=checked]:bg-primary"
+                  />
+                )}
+              />
+            </div>
+
+            <div className="py-4">
               <SettingRow
                 title={t("settings.launchAtStartup")}
                 control={(

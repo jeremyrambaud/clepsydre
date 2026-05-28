@@ -73,5 +73,8 @@ export interface UserSettings {
   check_interval_minutes: number;
   search_in_time_comments: boolean;
   idle_threshold_minutes: number;
+  daily_work_hours: number;
+  daily_work_tolerance_minutes: number;
+  show_weekends_in_weekly_activity: boolean;
   theme: "light" | "dark" | "system";
 }

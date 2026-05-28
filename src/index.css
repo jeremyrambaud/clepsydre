@@ -50,15 +50,15 @@
     --radius-3xl: calc(var(--radius) * 3);
     --radius-4xl: calc(var(--radius) * 4);
 
-    --color-surface: #051424;
-    --color-surface-low: #0d1c2d;
-    --color-surface-container: #122131;
-    --color-surface-high: #1c2b3c;
-    --color-surface-highest: #273647;
-    --color-tertiary: #4edea3;
-    --color-on-tertiary: #003824;
-    --color-error-text: #ffb4ab;
-    --color-error-bg: #93000a;
+    --color-surface: var(--surface);
+    --color-surface-low: var(--surface-low);
+    --color-surface-container: var(--surface-container);
+    --color-surface-high: var(--surface-high);
+    --color-surface-highest: var(--surface-highest);
+    --color-tertiary: var(--tertiary);
+    --color-on-tertiary: var(--on-tertiary);
+    --color-error-text: var(--error-text);
+    --color-error-bg: var(--error-bg);
 }
 
 :root {
@@ -94,6 +94,60 @@
     --sidebar-accent-foreground: #adc6ff;
     --sidebar-border: rgba(69, 70, 77, 0.1);
     --sidebar-ring: #adc6ff;
+
+    --surface: #051424;
+    --surface-low: #0d1c2d;
+    --surface-container: #122131;
+    --surface-high: #1c2b3c;
+    --surface-highest: #273647;
+    --tertiary: #4edea3;
+    --on-tertiary: #003824;
+    --error-text: #ffb4ab;
+    --error-bg: #93000a;
+}
+
+.light {
+    --background: #f4f7fb;
+    --foreground: #162336;
+    --card: #ffffff;
+    --card-foreground: #162336;
+    --popover: #ffffff;
+    --popover-foreground: #162336;
+    --primary: #2f67db;
+    --primary-foreground: #ffffff;
+    --secondary: #e3ecfb;
+    --secondary-foreground: #162336;
+    --muted: #edf2fa;
+    --muted-foreground: #5f6f84;
+    --accent: #24b07f;
+    --accent-foreground: #ffffff;
+    --destructive: #ba1a1a;
+    --border: rgba(22, 35, 54, 0.14);
+    --input: rgba(22, 35, 54, 0.18);
+    --ring: #2f67db;
+    --chart-1: #2f67db;
+    --chart-2: #24b07f;
+    --chart-3: #7a8db5;
+    --chart-4: #d8515b;
+    --chart-5: #7f8ea5;
+    --sidebar: #ffffff;
+    --sidebar-foreground: #162336;
+    --sidebar-primary: #2f67db;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: rgba(47, 103, 219, 0.09);
+    --sidebar-accent-foreground: #2f67db;
+    --sidebar-border: rgba(22, 35, 54, 0.12);
+    --sidebar-ring: #2f67db;
+
+    --surface: #f4f7fb;
+    --surface-low: #ffffff;
+    --surface-container: #ffffff;
+    --surface-high: #ecf1f9;
+    --surface-highest: #dee8f5;
+    --tertiary: #24b07f;
+    --on-tertiary: #ffffff;
+    --error-text: #ba1a1a;
+    --error-bg: #ffebee;
 }
 
 @layer base {

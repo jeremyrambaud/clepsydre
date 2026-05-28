@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTimer } from "@/hooks/useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
-import { logTimeEntry, fetchIssue, fetchLatestIssueComment } from "@/lib/redmine";
+import { logTimeEntry, fetchIssue, fetchLatestIssueComment, persistEntryTimesForCurrentDomain } from "@/lib/redmine";
 import { toast } from "sonner";
 import type { RedmineIssue, WorkSession } from "@/types";
 
@@ -232,6 +232,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           comments: commentToLog,
           spentOn,
         });
+        await persistEntryTimesForCurrentDomain(entryId, formatHHMM(startedAt), formatHHMM(stoppedAt));
         addSession(
           buildSession(
             selectedIssue,

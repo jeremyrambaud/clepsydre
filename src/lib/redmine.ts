@@ -553,6 +553,25 @@ export async function fetchActivities(): Promise<RedmineActivity[]> {
   return data.time_entry_activities;
 }
 
+export async function validateRedmineConnection(redmineUrl: string, apiKey: string): Promise<void> {
+  const url = redmineUrl.trim().replace(/\/+$/, "");
+  const token = apiKey.trim();
+
+  if (!url || !token) {
+    throw new Error(i18n.t("redmine.credentialsMissing"));
+  }
+
+  const resp = await fetch(`${url}/enumerations/time_entry_activities.json`, {
+    headers: { "X-Redmine-API-Key": token },
+    danger: { acceptInvalidCerts: true, acceptInvalidHostnames: true },
+  });
+
+  if (!resp.ok) {
+    const body = await resp.text();
+    throw new Error(i18n.t("redmine.connectionTestFailed", { status: resp.status, body }));
+  }
+}
+
 export async function fetchIssueTodayLoggedHours(issueId: number): Promise<number> {
   const { url, apiKey } = await getCredentials();
   const today = new Date().toISOString().split("T")[0];

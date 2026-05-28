@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -29,7 +30,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { validateRedmineConnection } from "@/lib/redmine";
 import { useSettingsStore, useUpdaterStore } from "@/store";
+import { toast } from "sonner";
 
 const NO_DEFAULT_ACTIVITY_VALUE = "__none__";
 const GITHUB_REPO_URL = "https://github.com/jeremyrambaud/clepsydre";
@@ -79,6 +82,7 @@ export function SettingsView() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [activeTab, setActiveTab] = useState<SettingsTab>("connection");
   const [draft, setDraft] = useState(settings);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   const hasDefaultActivity = draft.default_activity_id !== null;
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(settings);
@@ -89,7 +93,10 @@ export function SettingsView() {
   const restartApp = useUpdaterStore((s) => s.restartApp);
 
   const saveSettings = useSettingsStore((s) => s.saveSettings);
+  const resetSettings = useSettingsStore((s) => s.resetSettings);
   const loadCredentials = useSettingsStore((s) => s.loadCredentials);
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [isResettingAll, setIsResettingAll] = useState(false);
 
   useEffect(() => {
     void getVersion().then(setAppVersion);
@@ -117,12 +124,37 @@ export function SettingsView() {
     return () => window.clearInterval(interval);
   }, []);
 
-  function handleSave() {
-    saveSettings(draft);
+  async function handleSave() {
+    if (isSavingSettings) return;
+
+    setIsSavingSettings(true);
+    try {
+      await validateRedmineConnection(draft.redmine_url, draft.api_key);
+      await saveSettings(draft);
+      await syncActivities();
+    } catch (err) {
+      toast.error(t("settings.connectionValidationFailed"), {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsSavingSettings(false);
+    }
   }
 
   function handleDiscard() {
     setDraft(settings);
+  }
+
+  async function handleResetAllSettings() {
+    setIsResettingAll(true);
+    try {
+      await resetSettings();
+      const nextSettings = useSettingsStore.getState().settings;
+      setDraft(nextSettings);
+      setConfirmResetAll(false);
+    } finally {
+      setIsResettingAll(false);
+    }
   }
 
   const syncAgo = lastSyncedAt
@@ -728,15 +760,48 @@ export function SettingsView() {
       <div className="fixed inset-x-4 bottom-20 md:bottom-6 md:left-71 md:right-6 z-40 pointer-events-none">
         <div className="mx-auto max-w-5xl pointer-events-auto rounded-xl border border-border bg-background/95 backdrop-blur-sm px-3 py-3 shadow-lg">
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+            <Popover open={confirmResetAll} onOpenChange={setConfirmResetAll}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="destructive"
+                  disabled={isResettingAll}
+                  className="w-full sm:w-auto"
+                >
+                  {t("settings.resetAll")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent side="top" align="start" className="w-auto p-3">
+                <p className="text-sm font-medium mb-3">{t("settings.resetAllConfirmTitle")}</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => { void handleResetAllSettings(); }}
+                    disabled={isResettingAll}
+                  >
+                    {isResettingAll ? t("settings.resetting") : t("settings.resetAllConfirmAction")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmResetAll(false)}
+                    disabled={isResettingAll}
+                  >
+                    {t("timeEntry.discard")}
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button variant="outline" onClick={handleDiscard} disabled={!hasChanges} className="w-full sm:w-auto">
               {t("settings.discardChanges")}
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!hasChanges}
+              disabled={!hasChanges || isSavingSettings}
               className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
             >
-              {t("settings.saveConfiguration")}
+              {isSavingSettings ? t("settings.savingConfiguration") : t("settings.saveConfiguration")}
             </Button>
           </div>
         </div>

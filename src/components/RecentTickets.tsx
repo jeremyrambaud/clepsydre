@@ -163,8 +163,9 @@ export function RecentTickets({ activeTimelineSession, onSelectSession, onEditSe
 
           const stat = dayStats.get(session.spentOn);
           const formatH = (h: number) => {
-            const hrs = Math.floor(h);
-            const mins = Math.round((h - hrs) * 60);
+            const totalMinutes = Math.round(h * 60);
+            const hrs = Math.floor(totalMinutes / 60);
+            const mins = totalMinutes % 60;
             return `${hrs}h ${mins.toString().padStart(2, "0")}m`;
           };
 

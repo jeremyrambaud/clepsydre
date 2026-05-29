@@ -1017,11 +1017,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         },
       },
       tooltip: {
-        useHTML: true,
-        formatter: function (this: any): string {
-          const minutes = typeof this.y === "number" ? this.y : 0;
-          return `<span style=\"font-size: 11px\">${this.x}</span><br/><b>${formatMinutesAsHoursLabel(minutes)}</b>`;
-        },
+        enabled: false,
       },
       plotOptions: {
         series: {
@@ -1112,11 +1108,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         },
       },
       tooltip: {
-        useHTML: true,
-        formatter: function (this: any): string {
-          const minutes = typeof this.y === "number" ? this.y : 0;
-          return `<span style=\"font-size: 11px\">${this.x}</span><br/><b>${formatMinutesAsHoursLabel(minutes)}</b>`;
-        },
+        enabled: false,
       },
       plotOptions: {
         series: {
@@ -1491,6 +1483,13 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                 isWorkingDay
                 && dayMinutes >= minimumDailyMinutes
                 && dayMinutes <= targetDailyMinutes + targetDailyToleranceMinutes;
+              const isOverDailyTarget =
+                isWorkingDay && dayMinutes > targetDailyMinutes + targetDailyToleranceMinutes;
+              const dayMinutesColorClass = isWithinDailyTarget
+                ? "text-tertiary"
+                : isOverDailyTarget
+                  ? "text-[#8b5cf6]"
+                  : "text-chart-4";
               const holidayNameKey = frenchHolidayNamesByDate.get(cell.dateKey);
               const holidayName = holidayNameKey ? t(`analytics.holidayNames.${holidayNameKey}`) : "";
               const dayLabel = cell.date.toLocaleDateString(locale, {
@@ -1519,8 +1518,8 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                   : "border-tertiary/22 bg-tertiary/5 text-muted-foreground/70 hover:bg-tertiary/10"
                 : isForcedOff
                   ? cell.inCurrentMonth
-                    ? "border-chart-4/30 bg-chart-4/10 hover:bg-chart-4/14"
-                    : "border-chart-4/16 bg-chart-4/4 text-muted-foreground/70 hover:bg-chart-4/7"
+                    ? "border-chart-5/40 bg-chart-5/15 hover:bg-chart-5/20"
+                    : "border-chart-5/22 bg-chart-5/6 text-muted-foreground/70 hover:bg-chart-5/10"
                   : null;
 
               const specialClass = isHoliday
@@ -1533,13 +1532,17 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                     : "border-primary/14 bg-primary/4 text-muted-foreground/70 hover:bg-primary/7"
                   : null;
 
-              const selectedWeekClass = isHoliday
-                ? "border-chart-4/30 bg-chart-4/10 hover:bg-chart-4/14"
-                : isWeekendDay
-                  ? "border-primary/26 bg-primary/10 hover:bg-primary/13"
-                  : cell.inCurrentMonth
-                    ? "border-tertiary/35 bg-tertiary/10 hover:bg-tertiary/15"
-                    : "border-tertiary/25 bg-tertiary/5 hover:bg-tertiary/10";
+              const selectedWeekClass = isForcedWorking
+                ? "border-tertiary/45 bg-tertiary/16 hover:bg-tertiary/22"
+                : isForcedOff
+                  ? "border-chart-5/45 bg-chart-5/18 hover:bg-chart-5/24"
+                  : isHoliday
+                    ? "border-chart-4/30 bg-chart-4/10 hover:bg-chart-4/14"
+                    : isWeekendDay
+                      ? "border-primary/26 bg-primary/10 hover:bg-primary/13"
+                      : cell.inCurrentMonth
+                        ? "border-tertiary/35 bg-tertiary/10 hover:bg-tertiary/15"
+                        : "border-tertiary/25 bg-tertiary/5 hover:bg-tertiary/10";
 
               const calendarDayButton = (
                 <button
@@ -1590,7 +1593,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                         isForcedWorking
                           ? "text-tertiary/90"
                           : isForcedOff
-                            ? "text-chart-4/90"
+                            ? "text-chart-5"
                             : isHoliday
                           ? "text-chart-4/85"
                           : isWeekendDay
@@ -1605,7 +1608,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                     )}
                   </div>
                   {dayMinutes > 0 && (
-                    <div className={`mt-auto text-[10px] ${isWithinDailyTarget ? "text-tertiary" : "text-chart-4"}`}>
+                    <div className={`mt-auto text-[10px] ${dayMinutesColorClass}`}>
                       {formatMinutesClock(dayMinutes)}
                     </div>
                   )}
@@ -1627,16 +1630,25 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             })}
           </div>
 
-          <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-tertiary" />
               {t("analytics.goalReached")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[#8b5cf6]" />
+              {t("analytics.goalExceeded")}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-chart-4" />
               {t("analytics.incomplete")}
             </span>
           </div>
+
+          <p className="mt-1.5 text-[11px] text-muted-foreground">
+            {t("analytics.dailyGoal")} : {formatMinutesAsHoursLabel(targetDailyMinutes)}
+            {targetDailyToleranceMinutes > 0 ? ` ± ${targetDailyToleranceMinutes} min` : ""}
+          </p>
 
           {isMonthLoading && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface-container/50 backdrop-blur-[1px]">

@@ -3,11 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { TimerReturn } from "./useTimer";
 import { useIssueStore, useSettingsStore } from "@/store";
-import { fetchIssue } from "@/lib/redmine";
 
 interface IntegrationRequest {
   action: string;
   issueId: number | null;
+  loggedIssueId?: number | null;
+  openBillingIssueDialog?: boolean;
   requestId: string;
 }
 
@@ -31,7 +32,11 @@ interface IntegrationResponse {
 
 interface UseIntegrationBridgeOptions {
   timer: TimerReturn;
-  onSwitchRequest: (pendingIssueId: number) => void;
+  onSwitchRequest: (
+    pendingIssueId: number,
+    pendingLoggedIssueId?: number | null,
+    openBillingIssueDialog?: boolean,
+  ) => void;
   onStopRequest: () => void;
 }
 
@@ -82,7 +87,7 @@ export function useIntegrationBridge({
     let unlisten: (() => void) | undefined;
 
     void listen<IntegrationRequest>("integration-request", async (event) => {
-      const { action, issueId, requestId } = event.payload;
+      const { action, issueId, loggedIssueId, openBillingIssueDialog, requestId } = event.payload;
       const t = timerRef.current;
       const selectedIssue = useIssueStore.getState().selectedIssue;
 
@@ -130,9 +135,18 @@ export function useIntegrationBridge({
           return;
         }
 
-        if (t.isRunning && selectedIssue && selectedIssue.id !== issueId) {
+        const normalizedLoggedIssueId =
+          typeof loggedIssueId === "number" && Number.isFinite(loggedIssueId) && loggedIssueId > 0
+            ? loggedIssueId
+            : null;
+        const shouldOpenBillingIssueDialog = openBillingIssueDialog === true;
+
+        if (shouldOpenBillingIssueDialog || (t.isRunning && selectedIssue && selectedIssue.id !== issueId)) {
           void invoke("show_main_window").catch(() => {});
-          onSwitchRequest(issueId);
+        }
+
+        if (t.isRunning && selectedIssue && selectedIssue.id !== issueId) {
+          onSwitchRequest(issueId, normalizedLoggedIssueId, shouldOpenBillingIssueDialog);
           respond({
             requestId,
             action,
@@ -144,21 +158,8 @@ export function useIntegrationBridge({
           return;
         }
 
-        try {
-          const issue = await fetchIssue(issueId);
-          useIssueStore.getState().setSelectedIssue(issue);
-          if (!t.isRunning) {
-            t.start();
-          }
-          respond({ requestId, action, ok: true });
-        } catch (err) {
-          respond({
-            requestId,
-            action,
-            ok: false,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
+        onSwitchRequest(issueId, normalizedLoggedIssueId, shouldOpenBillingIssueDialog);
+        respond({ requestId, action, ok: true });
         return;
       }
 

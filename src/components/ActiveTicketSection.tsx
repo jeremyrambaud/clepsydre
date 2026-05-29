@@ -75,7 +75,7 @@ function TruncatedIssueTitle({ title }: { title: string }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{heading}</TooltipTrigger>
-      <TooltipContent className="max-w-sm break-words">{title}</TooltipContent>
+      <TooltipContent className="max-w-sm wrap-break-word">{title}</TooltipContent>
     </Tooltip>
   );
 }
@@ -88,6 +88,7 @@ interface ActiveTicketSectionProps {
   onSwitchIssue?: (issue: RedmineIssue, matchedComment?: string) => void;
   billingIssue?: RedmineIssue | null;
   onBillingIssueChange?: (issue: RedmineIssue | null) => void;
+  openBillingIssueDialogRequestToken?: number;
   onManualEntry?: () => void;
   commentDraft?: string;
   onCommentDraftChange?: (comment: string) => void;
@@ -111,7 +112,7 @@ function TruncatedDraftComment({ comment }: { comment: string }) {
   }, [check, comment]);
 
   const paragraph = (
-    <p ref={ref} className="text-xs text-muted-foreground/90 line-clamp-4 whitespace-pre-line break-words italic">
+    <p ref={ref} className="text-xs text-muted-foreground/90 line-clamp-4 whitespace-pre-line wrap-break-word italic">
       {comment}
     </p>
   );
@@ -183,7 +184,19 @@ function TruncatedInlineLabel({
   );
 }
 
-export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSwitchIssue, billingIssue = null, onBillingIssueChange, onManualEntry, commentDraft = "", onCommentDraftChange }: ActiveTicketSectionProps) {
+export function ActiveTicketSection({
+  timer,
+  onReset,
+  onStop,
+  onClearIssue,
+  onSwitchIssue,
+  billingIssue = null,
+  onBillingIssueChange,
+  openBillingIssueDialogRequestToken,
+  onManualEntry,
+  commentDraft = "",
+  onCommentDraftChange,
+}: ActiveTicketSectionProps) {
   const { t } = useTranslation();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const setSearchQuery = useIssueStore((s) => s.setSearchQuery);
@@ -196,6 +209,7 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
   const [commentEditorValue, setCommentEditorValue] = useState("");
   const [commentEditorSize, setCommentEditorSize] = useState<{ width: number; height: number }>(() => readStoredCommentEditorSize());
   const commentEditorContentRef = useRef<HTMLDivElement | null>(null);
+  const lastBillingIssueDialogRequestTokenRef = useRef<number>(0);
 
   const trimmedDraftComment = commentDraft.trim();
 
@@ -305,6 +319,20 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
     onBillingIssueChange?.(issue);
     handleBillingIssueDialogOpenChange(false);
   }, [handleBillingIssueDialogOpenChange, onBillingIssueChange]);
+
+  useEffect(() => {
+    if (!onBillingIssueChange || !selectedIssue) return;
+    if (!openBillingIssueDialogRequestToken) return;
+    if (openBillingIssueDialogRequestToken <= lastBillingIssueDialogRequestTokenRef.current) return;
+
+    lastBillingIssueDialogRequestTokenRef.current = openBillingIssueDialogRequestToken;
+    handleBillingIssueDialogOpenChange(true);
+  }, [
+    handleBillingIssueDialogOpenChange,
+    onBillingIssueChange,
+    openBillingIssueDialogRequestToken,
+    selectedIssue,
+  ]);
 
   useEffect(() => {
     let mounted = true;

@@ -77,6 +77,8 @@ pub fn get_timer_state(
 pub struct IntegrationRequest {
     pub action: String,
     pub issue_id: Option<u32>,
+    pub logged_issue_id: Option<u32>,
+    pub open_billing_issue_dialog: Option<bool>,
     pub request_id: String,
 }
 
@@ -103,11 +105,15 @@ pub fn integration_request(
     app: AppHandle,
     action: String,
     issue_id: Option<u32>,
+    logged_issue_id: Option<u32>,
+    open_billing_issue_dialog: Option<bool>,
     request_id: String,
 ) -> Result<(), String> {
     let payload = IntegrationRequest {
         action,
         issue_id,
+        logged_issue_id,
+        open_billing_issue_dialog,
         request_id,
     };
     app.emit("integration-request", payload)

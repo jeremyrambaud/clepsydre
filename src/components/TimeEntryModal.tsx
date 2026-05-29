@@ -667,7 +667,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     <Dialog open={open}>
       <DialogContent
         showCloseButton={false}
-        className="bg-card border-border sm:max-w-md"
+        className="bg-card border-border sm:max-w-md overflow-x-hidden"
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
       >
@@ -678,9 +678,9 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4">
+        <div className="grid gap-4 min-w-0">
           {/* Ticket */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
               {t("timeEntry.ticket")} <span className="text-destructive">*</span>
             </Label>
@@ -691,11 +691,11 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                   setIsLoggedTicketSearchMode(false);
                   setIsTicketSearchMode(true);
                 }}
-                className="w-full rounded-lg bg-muted border border-border p-3 text-left hover:bg-surface-high transition-colors"
+                className="w-full min-w-0 rounded-lg bg-muted border border-border p-3 text-left hover:bg-surface-high transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1 min-w-0">
                   <span className="text-xs font-semibold text-primary shrink-0">#{selectedIssue.id}</span>
-                  <span className="text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wide truncate min-w-0 flex-1 block">
                     {selectedIssue.project.name}
                   </span>
                   {isEdit ? (
@@ -708,10 +708,13 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
                       <TooltipContent>{t("timeEntry.clickToChange")}</TooltipContent>
                     </Tooltip>
                   ) : (
-                    <span className="ml-auto text-[10px] text-muted-foreground">{t("timeEntry.clickToChange")}</span>
+                    <span className="ml-auto text-[10px] text-muted-foreground shrink-0">{t("timeEntry.clickToChange")}</span>
                   )}
                 </div>
-                <TruncatedTicketSubject subject={selectedIssue.subject} />
+                <TruncatedTicketSubject
+                  subject={selectedIssue.subject}
+                  className="text-sm font-medium text-foreground line-clamp-2 wrap-break-word min-w-0"
+                />
               </button>
             ) : !isTicketSearchMode ? (
               <button
@@ -802,7 +805,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
           </div>
 
           {/* Logged ticket */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-1">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
                 {t("timeEntry.loggedTicket")} <span className="text-destructive">*</span>
@@ -824,7 +827,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               </Tooltip>
             </div>
             {!isLoggedTicketSearchMode && loggedIssue ? (
-              <div className="w-full rounded-lg bg-muted border border-border px-3 py-2 text-left">
+              <div className="w-full min-w-0 rounded-lg bg-muted border border-border px-3 py-2 text-left">
                 <div className="flex items-center gap-2 min-w-0">
                   <Tooltip>
                     <TooltipTrigger asChild>

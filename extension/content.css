@@ -86,6 +86,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   width: 26px;
   height: 26px;
   border: 1px solid #d1d5db;
@@ -96,6 +97,43 @@
   color: #374151;
   padding: 0;
   line-height: 1;
+}
+
+.clepsydre-btn[data-clepsydre-tooltip]:hover::after,
+.clepsydre-btn[data-clepsydre-tooltip]:focus-visible::after {
+  content: attr(data-clepsydre-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  max-width: 220px;
+  width: max-content;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(17, 24, 39, 0.96);
+  color: #f9fafb;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  z-index: 2147483647;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+}
+
+.clepsydre-btn[data-clepsydre-tooltip]:hover::before,
+.clepsydre-btn[data-clepsydre-tooltip]:focus-visible::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 2px);
+  transform: translateX(-50%);
+  border-width: 6px 5px 0 5px;
+  border-style: solid;
+  border-color: rgba(17, 24, 39, 0.96) transparent transparent transparent;
+  pointer-events: none;
+  z-index: 2147483647;
 }
 
 .clepsydre-btn svg,
@@ -130,4 +168,14 @@
 .clepsydre-btn--stop:hover:not(:disabled) {
   background: #fef2f2;
   color: #dc2626 !important;
+}
+
+.clepsydre-btn--assign {
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+
+.clepsydre-btn--assign:hover:not(:disabled) {
+  background: #eff6ff;
+  color: #2563eb !important;
 }

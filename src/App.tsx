@@ -23,6 +23,8 @@ function App() {
   const { t, i18n } = useTranslation();
   const [currentView, setCurrentView] = useState<View>("timer");
   const [pendingSwitchIssueId, setPendingSwitchIssueId] = useState<number | null>(null);
+  const [pendingSwitchLoggedIssueId, setPendingSwitchLoggedIssueId] = useState<number | null>(null);
+  const [pendingSwitchOpenBillingIssueDialog, setPendingSwitchOpenBillingIssueDialog] = useState(false);
   const [credentialsLoaded, setCredentialsLoaded] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [activeViewRefreshToken, setActiveViewRefreshToken] = useState(0);
@@ -158,8 +160,14 @@ function App() {
     syncActivities,
   ]);
 
-  const handleSwitchRequest = useCallback((issueId: number) => {
+  const handleSwitchRequest = useCallback((
+    issueId: number,
+    loggedIssueId?: number | null,
+    openBillingIssueDialog?: boolean,
+  ) => {
     setPendingSwitchIssueId(issueId);
+    setPendingSwitchLoggedIssueId(loggedIssueId ?? null);
+    setPendingSwitchOpenBillingIssueDialog(openBillingIssueDialog === true);
     setCurrentView("timer");
   }, []);
 
@@ -185,7 +193,13 @@ function App() {
             key={`timer-${activeViewRefreshToken}`}
             timer={timer}
             pendingSwitchIssueId={pendingSwitchIssueId}
-            onPendingSwitchHandled={() => setPendingSwitchIssueId(null)}
+            pendingSwitchLoggedIssueId={pendingSwitchLoggedIssueId}
+            pendingSwitchOpenBillingIssueDialog={pendingSwitchOpenBillingIssueDialog}
+            onPendingSwitchHandled={() => {
+              setPendingSwitchIssueId(null);
+              setPendingSwitchLoggedIssueId(null);
+              setPendingSwitchOpenBillingIssueDialog(false);
+            }}
             externalStopRequested={externalStopRequested}
             onExternalStopHandled={() => setExternalStopRequested(false)}
           />

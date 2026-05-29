@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TimerView } from "@/components/TimerView";
 import { AnalyticsView } from "@/components/AnalyticsView";
+import { HistoryView } from "@/components/HistoryView";
 import { SettingsView } from "@/components/SettingsView";
 import { UpdateDialog } from "@/components/UpdateDialog";
 import { SwitchTimerDialog } from "@/components/SwitchTimerDialog";
@@ -20,7 +21,7 @@ import { detectSystemLanguage, getPersistedLanguage } from "@/i18n";
 type View = "timer" | "analytics" | "history" | "settings";
 
 function App() {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const [currentView, setCurrentView] = useState<View>("timer");
   const [pendingSwitchIssueId, setPendingSwitchIssueId] = useState<number | null>(null);
   const [pendingSwitchLoggedIssueId, setPendingSwitchLoggedIssueId] = useState<number | null>(null);
@@ -213,9 +214,10 @@ function App() {
           />
         )}
         {currentView === "history" && (
-          <div key={`history-${activeViewRefreshToken}`} className="flex items-center justify-center h-full text-muted-foreground">
-            {t("app.historyComingSoon")}
-          </div>
+          <HistoryView
+            key={`history-${activeViewRefreshToken}`}
+            onStartIssue={(issueId) => handleSwitchRequest(issueId)}
+          />
         )}
       </AppLayout>
       <SwitchTimerDialog

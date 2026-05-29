@@ -65,10 +65,19 @@ pub fn spawn_bridge_server(app: AppHandle, timer_state: SharedTimerState) {
                 .unwrap_or("")
                 .to_string();
             let issue_id = msg.get("issueId").and_then(|v| v.as_u64()).map(|v| v as u32);
+            let logged_issue_id = msg
+                .get("loggedIssueId")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as u32);
+            let open_billing_issue_dialog = msg
+                .get("openBillingIssueDialog")
+                .and_then(|v| v.as_bool());
 
             let payload = IntegrationRequest {
                 action: action.clone(),
                 issue_id,
+                logged_issue_id,
+                open_billing_issue_dialog,
                 request_id: request_id.clone(),
             };
 

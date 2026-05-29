@@ -1,6 +1,52 @@
 (function () {
   "use strict";
 
+  const MESSAGES = {
+    en: {
+      startTimer: "Start Clepsydre timer",
+      stopTimer: "Stop Clepsydre timer",
+      startWithBillingChoice: "Start timer and choose billing issue",
+      appUnavailable: "Clepsydre app unavailable",
+      appDisconnected: "Clepsydre app not running or not installed",
+      launchDesktopApp: "Launch Clepsydre desktop app to start tracking time",
+      timerRunning: "Timer running",
+      timerRunningOnIssue: "Timer running on #{{issueId}}",
+      timerIdle: "Timer idle",
+    },
+    fr: {
+      startTimer: "Démarrer le timer Clepsydre",
+      stopTimer: "Arrêter le timer Clepsydre",
+      startWithBillingChoice: "Démarrer et choisir le ticket d'imputation",
+      appUnavailable: "Application Clepsydre indisponible",
+      appDisconnected: "Application Clepsydre non démarrée ou non installée",
+      launchDesktopApp:
+        "Lancez l'application desktop Clepsydre pour démarrer le suivi du temps",
+      timerRunning: "Timer en cours",
+      timerRunningOnIssue: "Timer en cours sur #{{issueId}}",
+      timerIdle: "Timer inactif",
+    },
+  };
+
+  function resolveLocale() {
+    const htmlLang =
+      document.documentElement?.getAttribute("lang")?.toLowerCase() || "";
+    const navLang = (navigator.language || "en").toLowerCase();
+    const candidate = htmlLang || navLang;
+    return candidate.startsWith("fr") ? "fr" : "en";
+  }
+
+  const locale = resolveLocale();
+
+  function t(key, vars) {
+    const dictionary = MESSAGES[locale] || MESSAGES.en;
+    const fallback = MESSAGES.en[key] || key;
+    const template = dictionary[key] || fallback;
+    if (!vars) return template;
+    return template.replace(/\{\{(\w+)\}\}/g, (_match, token) =>
+      String(vars[token] ?? "")
+    );
+  }
+
   function extractIssueId() {
     const match = window.location.pathname.match(/\/issues\/(\d+)/);
     return match ? parseInt(match[1], 10) : null;
@@ -75,6 +121,47 @@
       return svg;
     }
 
+    if (type === "play-gear") {
+      const polygon = document.createElementNS(svgNs, "polygon");
+      polygon.setAttribute("points", "4,3 14,12 4,21");
+      svg.appendChild(polygon);
+
+      const gearGroup = document.createElementNS(svgNs, "g");
+      gearGroup.setAttribute("fill", "none");
+      gearGroup.setAttribute("stroke", "currentColor");
+      gearGroup.setAttribute("stroke-width", "1.8");
+      gearGroup.setAttribute("stroke-linecap", "round");
+
+      const gearCircle = document.createElementNS(svgNs, "circle");
+      gearCircle.setAttribute("cx", "17");
+      gearCircle.setAttribute("cy", "17");
+      gearCircle.setAttribute("r", "2.2");
+      gearGroup.appendChild(gearCircle);
+
+      const spokeSegments = [
+        ["17", "12.4", "17", "13.4"],
+        ["17", "20.6", "17", "21.6"],
+        ["12.4", "17", "13.4", "17"],
+        ["20.6", "17", "21.6", "17"],
+        ["13.8", "13.8", "14.5", "14.5"],
+        ["19.5", "19.5", "20.2", "20.2"],
+        ["19.5", "14.5", "20.2", "13.8"],
+        ["13.8", "20.2", "14.5", "19.5"],
+      ];
+
+      for (const [x1, y1, x2, y2] of spokeSegments) {
+        const spoke = document.createElementNS(svgNs, "line");
+        spoke.setAttribute("x1", x1);
+        spoke.setAttribute("y1", y1);
+        spoke.setAttribute("x2", x2);
+        spoke.setAttribute("y2", y2);
+        gearGroup.appendChild(spoke);
+      }
+
+      svg.appendChild(gearGroup);
+      return svg;
+    }
+
     const rect = document.createElementNS(svgNs, "rect");
     rect.setAttribute("x", "4");
     rect.setAttribute("y", "4");
@@ -89,11 +176,18 @@
     button.replaceChildren(createIconSvg(type));
   }
 
+  function setButtonTooltip(button, text) {
+    button.title = text;
+    button.setAttribute("aria-label", text);
+    button.dataset.clepsydreTooltip = text;
+  }
+
   const issueId = extractIssueId();
   if (!issueId) return;
 
   let widget = null;
   let btn = null;
+  let assignBtn = null;
   let infoSpan = null;
   let statusDot = null;
   let currentState = null;
@@ -127,8 +221,13 @@
 
     btn = document.createElement("button");
     btn.className = "clepsydre-btn clepsydre-btn--start";
-    btn.title = "Start Clepsydre timer";
+    setButtonTooltip(btn, t("startTimer"));
     setButtonIcon(btn, "play");
+
+    assignBtn = document.createElement("button");
+    assignBtn.className = "clepsydre-btn clepsydre-btn--assign";
+    setButtonTooltip(assignBtn, t("startWithBillingChoice"));
+    setButtonIcon(assignBtn, "play-gear");
 
     infoSpan = document.createElement("span");
     infoSpan.className = "clepsydre-info";
@@ -137,11 +236,13 @@
     statusDot.className = "clepsydre-status clepsydre-status--idle";
 
     widget.appendChild(btn);
+    widget.appendChild(assignBtn);
     widget.appendChild(infoSpan);
     widget.appendChild(statusDot);
     subjectHeading.appendChild(widget);
 
     btn.addEventListener("click", handleClick);
+    assignBtn.addEventListener("click", handleCustomStartClick);
   }
 
   function removeWidget() {
@@ -151,6 +252,7 @@
     widgetInjected = false;
     widget = null;
     btn = null;
+    assignBtn = null;
     infoSpan = null;
     statusDot = null;
   }
@@ -162,14 +264,19 @@
 
     btn.disabled = true;
     btn.className = "clepsydre-btn clepsydre-btn--start";
-    btn.title = "Clepsydre app unavailable";
+    setButtonTooltip(btn, t("appUnavailable"));
     setButtonIcon(btn, "play");
+    if (assignBtn) {
+      assignBtn.disabled = true;
+      assignBtn.style.display = "inline-flex";
+      setButtonTooltip(assignBtn, t("startWithBillingChoice"));
+    }
 
     statusDot.className = "clepsydre-status clepsydre-status--disconnected";
-    statusDot.title = "Clepsydre app not running or not installed";
+    statusDot.title = t("appDisconnected");
 
     infoSpan.className = "clepsydre-info clepsydre-info--error";
-    infoSpan.textContent = "Launch Clepsydre desktop app to start tracking time";
+    infoSpan.textContent = t("launchDesktopApp");
   }
 
   function startLocalTicker() {
@@ -219,6 +326,11 @@
   function updateUI() {
     if (!currentState || !btn || !statusDot || !infoSpan) return;
     btn.disabled = false;
+    if (assignBtn) {
+      assignBtn.disabled = false;
+      assignBtn.style.display = "inline-flex";
+      setButtonTooltip(assignBtn, t("startWithBillingChoice"));
+    }
 
     const isThisIssueActive =
       currentState.issueId === issueId &&
@@ -230,23 +342,26 @@
 
     if (isThisIssueActive) {
       btn.className = "clepsydre-btn clepsydre-btn--stop";
-      btn.title = "Stop Clepsydre timer";
+      setButtonTooltip(btn, t("stopTimer"));
       setButtonIcon(btn, "stop");
+      if (assignBtn) {
+        assignBtn.style.display = "none";
+      }
       statusDot.className = "clepsydre-status clepsydre-status--active";
-      statusDot.title = "Timer running";
+      statusDot.title = t("timerRunning");
 
       infoSpan.className = "clepsydre-info clepsydre-info--time";
       infoSpan.textContent = formatElapsed(lastSyncSeconds);
       startLocalTicker();
     } else {
       btn.className = "clepsydre-btn clepsydre-btn--start";
-      btn.title = "Start Clepsydre timer";
+      setButtonTooltip(btn, t("startTimer"));
       setButtonIcon(btn, "play");
       stopLocalTicker();
 
       if (isOtherActive) {
         statusDot.className = "clepsydre-status clepsydre-status--other";
-        statusDot.title = `Timer running on #${currentState.issueId}`;
+        statusDot.title = t("timerRunningOnIssue", { issueId: currentState.issueId });
         infoSpan.className = "clepsydre-info clepsydre-info--other";
         infoSpan.textContent = "";
 
@@ -268,7 +383,7 @@
         infoSpan.appendChild(issueLink);
       } else {
         statusDot.className = "clepsydre-status clepsydre-status--idle";
-        statusDot.title = "Timer idle";
+        statusDot.title = t("timerIdle");
         infoSpan.className = "clepsydre-info";
         infoSpan.textContent = "";
       }
@@ -278,6 +393,9 @@
   async function handleClick() {
     if (!btn) return;
     btn.disabled = true;
+    if (assignBtn) {
+      assignBtn.disabled = true;
+    }
     try {
       const isThisIssueActive =
         currentState &&
@@ -297,6 +415,37 @@
       setUnavailableState();
     } finally {
       if (btn && btn.title !== "Clepsydre app unavailable") btn.disabled = false;
+      if (assignBtn && btn && btn.title !== "Clepsydre app unavailable") {
+        assignBtn.disabled = false;
+      }
+    }
+  }
+
+  async function handleCustomStartClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!btn || !assignBtn) return;
+
+    btn.disabled = true;
+    assignBtn.disabled = true;
+    try {
+      await sendBridgeMessage({
+        action: "startIssue",
+        issueId,
+        openBillingIssueDialog: true,
+      });
+      await new Promise((r) => setTimeout(r, 500));
+      await refreshState();
+    } catch (err) {
+      console.error("[Clepsydre]", err);
+      setUnavailableState();
+    } finally {
+      if (btn && btn.title !== "Clepsydre app unavailable") {
+        btn.disabled = false;
+      }
+      if (assignBtn && btn && btn.title !== "Clepsydre app unavailable") {
+        assignBtn.disabled = false;
+      }
     }
   }
 

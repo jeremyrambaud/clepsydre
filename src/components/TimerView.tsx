@@ -25,6 +25,8 @@ import type { RedmineIssue, WorkSession } from "@/types";
 interface TimerViewProps {
   timer: ReturnType<typeof useTimer>;
   pendingSwitchIssueId?: number | null;
+  pendingSwitchLoggedIssueId?: number | null;
+  pendingSwitchOpenBillingIssueDialog?: boolean;
   onPendingSwitchHandled?: () => void;
   externalStopRequested?: boolean;
   onExternalStopHandled?: () => void;
@@ -77,7 +79,15 @@ function buildCommentWithContextPrefix(
   return baseComment ? `${contextPrefix}\n${baseComment}` : contextPrefix;
 }
 
-export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled, externalStopRequested, onExternalStopHandled }: TimerViewProps) {
+export function TimerView({
+  timer,
+  pendingSwitchIssueId,
+  pendingSwitchLoggedIssueId,
+  pendingSwitchOpenBillingIssueDialog = false,
+  onPendingSwitchHandled,
+  externalStopRequested,
+  onExternalStopHandled,
+}: TimerViewProps) {
   const { t } = useTranslation();
   const { setSelectedIssue, addSession, selectedIssue } = useIssueStore();
   const recentSessions = useIssueStore((s) => s.recentSessions);
@@ -103,6 +113,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [deleteEntryModalOpen, setDeleteEntryModalOpen] = useState(false);
   const [deletingSession, setDeletingSession] = useState<WorkSession | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
+  const [openBillingIssueDialogRequestToken, setOpenBillingIssueDialogRequestToken] = useState(0);
   const [activeCommentDraft, setActiveCommentDraft] = useState("");
   const [loggingIssueOverride, setLoggingIssueOverride] = useState<RedmineIssue | null>(null);
   const draftCommentRequestRef = useRef(0);
@@ -407,14 +418,53 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     onPendingSwitchHandled?.();
 
     const doSwitch = async () => {
-      if (timer.isRunning && selectedIssue) {
+      const isSameIssue = selectedIssue?.id === issueId;
+      const shouldStartTimerAfterSwitch =
+        !timer.isRunning || timer.isPaused || (selectedIssue != null && !isSameIssue);
+
+      if (timer.isRunning && selectedIssue && !isSameIssue) {
         await finalizeStopFlow(undefined, { keepRunningAfterCreateSave: false });
       }
+
       try {
-        const issue = await fetchIssue(issueId);
-        setSelectedIssue(issue);
-        setLoggingIssueOverride(getLastImputationTargetForIssue(issue.id));
-        timer.start();
+        const issue =
+          isSameIssue && selectedIssue
+            ? selectedIssue
+            : await fetchIssue(issueId);
+
+        if (!isSameIssue || !selectedIssue) {
+          setSelectedIssue(issue);
+        }
+
+        let nextBillingIssue: RedmineIssue | null = null;
+        if (
+          pendingSwitchLoggedIssueId != null &&
+          pendingSwitchLoggedIssueId !== issue.id
+        ) {
+          try {
+            nextBillingIssue = await fetchIssue(pendingSwitchLoggedIssueId);
+          } catch (billingIssueError) {
+            console.error("Failed to load billing issue override:", billingIssueError);
+          }
+        }
+
+        if (!nextBillingIssue) {
+          nextBillingIssue = getLastImputationTargetForIssue(issue.id);
+        }
+
+        setLoggingIssueOverride(
+          nextBillingIssue && nextBillingIssue.id !== issue.id
+            ? nextBillingIssue
+            : null
+        );
+
+        if (shouldStartTimerAfterSwitch) {
+          timer.start();
+        }
+
+        if (pendingSwitchOpenBillingIssueDialog) {
+          setOpenBillingIssueDialogRequestToken((token) => token + 1);
+        }
       } catch (err) {
         toast.error(t("timerView.failedStartNewTicket"), {
           description: err instanceof Error ? err.message : String(err),
@@ -422,7 +472,17 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       }
     };
     void doSwitch();
-  }, [getLastImputationTargetForIssue, onPendingSwitchHandled, pendingSwitchIssueId, selectedIssue, finalizeStopFlow, t, timer]);
+  }, [
+    finalizeStopFlow,
+    getLastImputationTargetForIssue,
+    onPendingSwitchHandled,
+    pendingSwitchIssueId,
+    pendingSwitchLoggedIssueId,
+    pendingSwitchOpenBillingIssueDialog,
+    selectedIssue,
+    t,
+    timer,
+  ]);
 
   useEffect(() => {
     if (!externalStopRequested) return;
@@ -802,6 +862,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onSwitchIssue={handleSwitchActiveTicketKeepElapsed}
           billingIssue={loggingIssueOverride}
           onBillingIssueChange={handleSetLoggingIssue}
+          openBillingIssueDialogRequestToken={openBillingIssueDialogRequestToken}
           onManualEntry={handleOpenManualEntry}
           commentDraft={activeCommentDraft}
           onCommentDraftChange={setActiveCommentDraft}

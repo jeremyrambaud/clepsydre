@@ -9,6 +9,8 @@ export interface GetTimerStateRequest {
 export interface StartIssueRequest {
   action: "startIssue";
   issueId: number;
+  loggedIssueId?: number;
+  openBillingIssueDialog?: boolean;
 }
 
 export interface StopCurrentRequest {

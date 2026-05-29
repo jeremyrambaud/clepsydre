@@ -49,9 +49,38 @@ function formatIdleDuration(seconds: number): string {
   return `${minutes}m ${remainingSeconds.toString().padStart(2, "0")}s`;
 }
 
+const AUTO_CONTEXT_COMMENT_PREFIX_REGEX = /^#\d+\s-\s.+$/;
+
+function stripAutoContextCommentPrefix(comment: string): string {
+  const normalized = comment.replace(/\r\n/g, "\n");
+  const [firstLine = "", ...restLines] = normalized.split("\n");
+
+  if (!AUTO_CONTEXT_COMMENT_PREFIX_REGEX.test(firstLine.trim())) {
+    return normalized;
+  }
+
+  return restLines.join("\n").replace(/^\n+/, "");
+}
+
+function buildCommentWithContextPrefix(
+  comment: string,
+  contextIssue: RedmineIssue | null,
+  loggingIssue: RedmineIssue | null,
+): string {
+  const baseComment = stripAutoContextCommentPrefix(comment).trim();
+
+  if (!contextIssue || !loggingIssue || loggingIssue.id === contextIssue.id) {
+    return baseComment;
+  }
+
+  const contextPrefix = `#${contextIssue.id} - ${contextIssue.subject}`;
+  return baseComment ? `${contextPrefix}\n${baseComment}` : contextPrefix;
+}
+
 export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled, externalStopRequested, onExternalStopHandled }: TimerViewProps) {
   const { t } = useTranslation();
   const { setSelectedIssue, addSession, selectedIssue } = useIssueStore();
+  const recentSessions = useIssueStore((s) => s.recentSessions);
   const settings = useSettingsStore((s) => s.settings);
   const loadSessions = useIssueStore((s) => s.loadSessions);
 
@@ -67,6 +96,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [editingSession, setEditingSession] = useState<WorkSession | null>(null);
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualIssue, setManualIssue] = useState(selectedIssue);
+  const [manualLoggedIssue, setManualLoggedIssue] = useState<RedmineIssue | null>(selectedIssue);
   const [manualAnchorTime, setManualAnchorTime] = useState<Date>(new Date());
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
   const [duplicatingSession, setDuplicatingSession] = useState<WorkSession | null>(null);
@@ -74,6 +104,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const [deletingSession, setDeletingSession] = useState<WorkSession | null>(null);
   const [isDeletingSession, setIsDeletingSession] = useState(false);
   const [activeCommentDraft, setActiveCommentDraft] = useState("");
+  const [loggingIssueOverride, setLoggingIssueOverride] = useState<RedmineIssue | null>(null);
   const draftCommentRequestRef = useRef(0);
   const skipNextIssuePrefillRef = useRef(false);
   const pendingSwitchIssueRef = useRef<RedmineIssue | null>(null);
@@ -84,11 +115,14 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   const clearIssueAfterCreateFlowRef = useRef(false);
   const pendingSwitchIssueIdRef = useRef<number | null>(null);
   const [stoppedIssue, setStoppedIssue] = useState(selectedIssue);
+  const [stoppedLoggedIssue, setStoppedLoggedIssue] = useState<RedmineIssue | null>(selectedIssue);
   const idleDialogOpen = idleDecisionSeconds !== null;
 
   const clearActiveIssue = useCallback(() => {
     setSelectedIssue(null);
+    setLoggingIssueOverride(null);
     setStoppedIssue(null);
+    setStoppedLoggedIssue(null);
     setActiveCommentDraft("");
     timer.reset();
   }, [setSelectedIssue, timer]);
@@ -125,6 +159,26 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     void applyDraftCommentForIssue(selectedIssue?.id ?? null);
   }, [applyDraftCommentForIssue, selectedIssue?.id]);
 
+  useEffect(() => {
+    setActiveCommentDraft((currentDraft) => {
+      const nextDraft = buildCommentWithContextPrefix(
+        currentDraft,
+        selectedIssue,
+        loggingIssueOverride ?? selectedIssue,
+      );
+
+      return nextDraft === currentDraft ? currentDraft : nextDraft;
+    });
+  }, [loggingIssueOverride, selectedIssue]);
+
+  const getLastImputationTargetForIssue = useCallback((issueId: number): RedmineIssue | null => {
+    const previousEntry = recentSessions.find(
+      (session) => session.issue.id === issueId && session.loggedIssue?.id != null && session.loggedIssue.id !== issueId
+    );
+
+    return previousEntry?.loggedIssue ?? null;
+  }, [recentSessions]);
+
   const handlePendingIssueSwitch = useCallback(() => {
     const nextIssue = pendingSwitchIssueRef.current;
     if (!nextIssue) return false;
@@ -146,13 +200,14 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     }
 
     setSelectedIssue(nextIssue);
+    setLoggingIssueOverride(getLastImputationTargetForIssue(nextIssue.id));
     if (settings.auto_start_timer_on_task_select) {
       timer.start();
     } else {
       timer.reset();
     }
     return true;
-  }, [applyDraftCommentForIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, settings.prefill_last_comment_on_timer_start, timer]);
+  }, [applyDraftCommentForIssue, getLastImputationTargetForIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, settings.prefill_last_comment_on_timer_start, timer]);
 
   function handleSelectFromSession(session: WorkSession) {
     const issueChanged = selectedIssue?.id !== session.issue.id;
@@ -179,6 +234,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
     if (issueChanged) {
       setSelectedIssue(session.issue);
+      setLoggingIssueOverride(getLastImputationTargetForIssue(session.issue.id));
     }
 
     if (!settings.auto_start_timer_on_task_select) {
@@ -199,7 +255,8 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   }
 
   function buildSession(
-    issue: typeof selectedIssue,
+    issue: RedmineIssue,
+    loggedIssue: RedmineIssue,
     hours: number,
     activityId: number,
     comments: string,
@@ -210,7 +267,8 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
   ): WorkSession {
     return {
       id: crypto.randomUUID(),
-      issue: issue!,
+      issue,
+      loggedIssue,
       hours,
       activityId,
       comments,
@@ -226,13 +284,16 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     secondsOverride?: number,
     options?: { keepRunningAfterCreateSave?: boolean; stoppedAtOverride?: Date; forceCreateModal?: boolean }
   ) => {
+    const contextIssue = selectedIssue;
+    const issueForLogging = loggingIssueOverride ?? selectedIssue;
     const seconds = Math.max(0, Math.floor(secondsOverride ?? timer.elapsedSeconds));
-    if (seconds === 0 || !selectedIssue) {
+    if (seconds === 0 || !issueForLogging || !contextIssue) {
       timer.stop();
       return;
     }
 
-    setStoppedIssue(selectedIssue);
+    setStoppedIssue(contextIssue);
+    setStoppedLoggedIssue(issueForLogging);
 
     const stoppedAt = options?.stoppedAtOverride ?? new Date();
     const startedAt = timer.startTime ?? new Date(stoppedAt.getTime() - seconds * 1000);
@@ -241,19 +302,25 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       timer.stop();
       const hours = Math.round((seconds / 3600) * 100) / 100;
       const spentOn = stoppedAt.toISOString().split("T")[0];
-      const commentToLog = activeCommentDraft.trim() || settings.default_comment;
+      const draftCommentWithContext = buildCommentWithContextPrefix(activeCommentDraft, contextIssue, issueForLogging);
+      const defaultCommentWithContext = buildCommentWithContextPrefix(settings.default_comment, contextIssue, issueForLogging);
+      const commentToLog = draftCommentWithContext.trim() || defaultCommentWithContext.trim();
       try {
         const entryId = await logTimeEntry({
-          issueId: selectedIssue.id,
+          issueId: issueForLogging.id,
           hours,
           activityId: settings.default_activity_id ?? 0,
           comments: commentToLog,
           spentOn,
         });
-        await persistEntryTimesForCurrentDomain(entryId, formatHHMM(startedAt), formatHHMM(stoppedAt));
+        await persistEntryTimesForCurrentDomain(entryId, formatHHMM(startedAt), formatHHMM(stoppedAt), {
+          issue: contextIssue,
+          loggedIssue: issueForLogging,
+        });
         addSession(
           buildSession(
-            selectedIssue,
+            contextIssue,
+            issueForLogging,
             hours,
             settings.default_activity_id ?? 0,
             commentToLog,
@@ -266,7 +333,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
         toast.success(t("timerView.timeLoggedSuccess"), {
           description: t("timerView.loggedDescription", {
             duration: formatTimeDisplay(seconds),
-            issueId: selectedIssue.id,
+            issueId: issueForLogging.id,
           }),
         });
       } catch (err) {
@@ -274,7 +341,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           description: err instanceof Error ? err.message : String(err),
         });
       }
-      void applyDraftCommentForIssue(selectedIssue.id, commentToLog);
+      void applyDraftCommentForIssue(issueForLogging.id, commentToLog);
       timer.reset();
     } else {
       keepRunningAfterCreateSaveRef.current = options?.keepRunningAfterCreateSave ?? false;
@@ -284,7 +351,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       timer.stop();
       setCreateModalOpen(true);
     }
-  }, [activeCommentDraft, addSession, applyDraftCommentForIssue, selectedIssue, settings, timer]);
+  }, [activeCommentDraft, addSession, applyDraftCommentForIssue, loggingIssueOverride, selectedIssue, settings, timer]);
 
   const handleStop = useCallback(async () => {
     keepRunningAfterCreateSaveRef.current = false;
@@ -317,18 +384,21 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
   const handleOpenManualEntry = useCallback(() => {
     if (!selectedIssue) return;
+    const issueForManual = loggingIssueOverride ?? selectedIssue;
     const now = new Date();
     setManualIssue(selectedIssue);
+    setManualLoggedIssue(issueForManual);
     setManualAnchorTime(now);
     setManualModalOpen(true);
-  }, [selectedIssue]);
+  }, [loggingIssueOverride, selectedIssue]);
 
   const handleOpenManualEntryForIssue = useCallback((issue: RedmineIssue) => {
     const now = new Date();
     setManualIssue(issue);
+    setManualLoggedIssue(getLastImputationTargetForIssue(issue.id) ?? issue);
     setManualAnchorTime(now);
     setManualModalOpen(true);
-  }, []);
+  }, [getLastImputationTargetForIssue]);
 
   useEffect(() => {
     if (pendingSwitchIssueId == null) return;
@@ -343,6 +413,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       try {
         const issue = await fetchIssue(issueId);
         setSelectedIssue(issue);
+        setLoggingIssueOverride(getLastImputationTargetForIssue(issue.id));
         timer.start();
       } catch (err) {
         toast.error(t("timerView.failedStartNewTicket"), {
@@ -351,7 +422,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       }
     };
     void doSwitch();
-  }, [pendingSwitchIssueId]);
+  }, [getLastImputationTargetForIssue, onPendingSwitchHandled, pendingSwitchIssueId, selectedIssue, finalizeStopFlow, t, timer]);
 
   useEffect(() => {
     if (!externalStopRequested) return;
@@ -492,10 +563,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     [finalizeStopFlow, idleDecisionSeconds, selectedIssue, settings.express_entry, timer]
   );
 
-  function handleCreateSaved(issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+  function handleCreateSaved(issue: RedmineIssue, loggedIssue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
     if (issue) {
       const session = buildSession(
         issue,
+        loggedIssue,
         hours,
         activityId,
         comments,
@@ -509,6 +581,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       addSession(session);
     }
     setCreateModalOpen(false);
+    setStoppedLoggedIssue(null);
 
     if (clearIssueAfterCreateFlowRef.current) {
       clearIssueAfterCreateFlowRef.current = false;
@@ -536,7 +609,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setEditModalOpen(true);
   }
 
-  function handleEditSaved(updates: Pick<WorkSession, "issue" | "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) {
+  function handleEditSaved(updates: Pick<WorkSession, "issue" | "loggedIssue" | "hours" | "activityId" | "comments" | "spentOn" | "startedAt" | "stoppedAt">) {
     if (editingSession) {
       useIssueStore.getState().updateSession(editingSession.id, updates);
     }
@@ -551,10 +624,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setEditingSession(null);
   }
 
-  function handleManualSaved(issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+  function handleManualSaved(issue: RedmineIssue, loggedIssue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
     if (issue) {
       const session = buildSession(
         issue,
+        loggedIssue,
         hours,
         activityId,
         comments,
@@ -571,6 +645,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
     setManualModalOpen(false);
     setManualIssue(null);
+    setManualLoggedIssue(null);
   }
 
   function handleDuplicateSession(session: WorkSession) {
@@ -578,9 +653,10 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     setDuplicateModalOpen(true);
   }
 
-  function handleDuplicateSaved(issue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
+  function handleDuplicateSaved(issue: RedmineIssue, loggedIssue: RedmineIssue, entryId: number, hours: number, activityId: number, comments: string, spentOn: string, startedAt: string, stoppedAt: string) {
     const session = buildSession(
       issue,
+      loggedIssue,
       hours,
       activityId,
       comments,
@@ -647,6 +723,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
 
     if (issueChanged) {
       setSelectedIssue(issue);
+      setLoggingIssueOverride(getLastImputationTargetForIssue(issue.id));
     }
 
     if (!settings.auto_start_timer_on_task_select) {
@@ -664,7 +741,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     if (timer.isPaused) {
       timer.resume();
     }
-  }, [finalizeStopFlow, selectedIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, timer]);
+  }, [finalizeStopFlow, getLastImputationTargetForIssue, selectedIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, timer]);
 
   const handleSwitchActiveTicketKeepElapsed = useCallback((issue: RedmineIssue) => {
     if (selectedIssue?.id === issue.id) return;
@@ -673,7 +750,22 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     skipNextIssuePrefillRef.current = true;
 
     setSelectedIssue(issue);
-  }, [selectedIssue?.id, setSelectedIssue]);
+    setLoggingIssueOverride(getLastImputationTargetForIssue(issue.id));
+  }, [getLastImputationTargetForIssue, selectedIssue?.id, setSelectedIssue]);
+
+  const handleSetLoggingIssue = useCallback((issue: RedmineIssue | null) => {
+    if (!selectedIssue) {
+      setLoggingIssueOverride(null);
+      return;
+    }
+
+    if (!issue || issue.id === selectedIssue.id) {
+      setLoggingIssueOverride(null);
+      return;
+    }
+
+    setLoggingIssueOverride(issue);
+  }, [selectedIssue]);
 
   const activeTimelineSession = useMemo<WorkSession | null>(() => {
     if (!selectedIssue || !timer.isRunning) return null;
@@ -684,6 +776,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
     return {
       id: `__active__${selectedIssue.id}_${start.getTime()}`,
       issue: selectedIssue,
+      loggedIssue: loggingIssueOverride ?? selectedIssue,
       hours: timer.elapsedSeconds / 3600,
       activityId: settings.default_activity_id ?? 0,
       comments: activeCommentDraft,
@@ -692,7 +785,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
       stoppedAt: formatHHMM(now),
       createdAt: now.toISOString(),
     };
-  }, [activeCommentDraft, selectedIssue, settings.default_activity_id, timer.elapsedSeconds, timer.isRunning, timer.startTime]);
+  }, [activeCommentDraft, loggingIssueOverride, selectedIssue, settings.default_activity_id, timer.elapsedSeconds, timer.isRunning, timer.startTime]);
 
   return (
     <div className="flex flex-col max-w-6xl mx-auto lg:h-full lg:min-h-0">
@@ -707,6 +800,8 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onStop={handleStop}
           onClearIssue={() => { void handleClearActiveIssue(); }}
           onSwitchIssue={handleSwitchActiveTicketKeepElapsed}
+          billingIssue={loggingIssueOverride}
+          onBillingIssueChange={handleSetLoggingIssue}
           onManualEntry={handleOpenManualEntry}
           commentDraft={activeCommentDraft}
           onCommentDraftChange={setActiveCommentDraft}
@@ -729,12 +824,15 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onClose={() => {
             keepRunningAfterCreateSaveRef.current = false;
             setCreateModalOpen(false);
+            setStoppedLoggedIssue(null);
             const issueId = stoppedIssue?.id ?? useIssueStore.getState().selectedIssue?.id ?? null;
 
             if (clearIssueAfterCreateFlowRef.current) {
               clearIssueAfterCreateFlowRef.current = false;
               setSelectedIssue(null);
+              setLoggingIssueOverride(null);
               setStoppedIssue(null);
+              setStoppedLoggedIssue(null);
               setActiveCommentDraft("");
               return;
             }
@@ -755,6 +853,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           }}
           onSaved={handleCreateSaved}
           issue={stoppedIssue}
+          loggingIssue={stoppedLoggedIssue ?? stoppedIssue}
           elapsedSeconds={stoppedSeconds}
           startedAt={formatHHMM(stoppedStartTime ?? new Date())}
           stoppedAt={formatHHMM(stoppedAtTime ?? new Date())}
@@ -782,9 +881,11 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           onClose={() => {
             setManualModalOpen(false);
             setManualIssue(null);
+            setManualLoggedIssue(null);
           }}
           onSaved={handleManualSaved}
           issue={manualIssue}
+          loggingIssue={manualLoggedIssue ?? manualIssue}
           elapsedSeconds={0}
           startedAt={formatHHMM(manualAnchorTime)}
           stoppedAt={formatHHMM(manualAnchorTime)}
@@ -802,6 +903,7 @@ export function TimerView({ timer, pendingSwitchIssueId, onPendingSwitchHandled,
           }}
           onSaved={handleDuplicateSaved}
           issue={duplicatingSession.issue}
+          loggingIssue={duplicatingSession.loggedIssue ?? duplicatingSession.issue}
           initialSpentOn={duplicatingSession.spentOn}
           initialActivityId={duplicatingSession.activityId}
           elapsedSeconds={Math.round(duplicatingSession.hours * 3600)}

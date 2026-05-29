@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2, Pause, Play, Square, Clock, ExternalLink, X, Pencil } from "lucide-react";
+import { Trash2, Pause, Play, Square, Clock, ExternalLink, X, Pencil, CircleHelp, RotateCcw, Plus } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,8 @@ interface ActiveTicketSectionProps {
   onStop?: () => void;
   onClearIssue?: () => void;
   onSwitchIssue?: (issue: RedmineIssue, matchedComment?: string) => void;
+  billingIssue?: RedmineIssue | null;
+  onBillingIssueChange?: (issue: RedmineIssue | null) => void;
   onManualEntry?: () => void;
   commentDraft?: string;
   onCommentDraftChange?: (comment: string) => void;
@@ -109,7 +111,7 @@ function TruncatedDraftComment({ comment }: { comment: string }) {
   }, [check, comment]);
 
   const paragraph = (
-    <p ref={ref} className="text-xs text-muted-foreground/90 line-clamp-2 whitespace-pre-line break-words">
+    <p ref={ref} className="text-xs text-muted-foreground/90 line-clamp-4 whitespace-pre-line break-words italic">
       {comment}
     </p>
   );
@@ -124,7 +126,64 @@ function TruncatedDraftComment({ comment }: { comment: string }) {
   );
 }
 
-export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSwitchIssue, onManualEntry, commentDraft = "", onCommentDraftChange }: ActiveTicketSectionProps) {
+function limitText(value: string, maxChars: number): { text: string; wasTrimmedByChars: boolean } {
+  if (value.length <= maxChars) {
+    return { text: value, wasTrimmedByChars: false };
+  }
+
+  return {
+    text: `${value.slice(0, Math.max(0, maxChars - 1)).trimEnd()}...`,
+    wasTrimmedByChars: true,
+  };
+}
+
+function TruncatedInlineLabel({
+  value,
+  maxChars,
+  className,
+  tooltipClassName,
+}: {
+  value: string;
+  maxChars: number;
+  className?: string;
+  tooltipClassName?: string;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const { text: displayValue, wasTrimmedByChars } = limitText(value, maxChars);
+
+  const check = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    setIsOverflowing(el.scrollWidth > el.clientWidth);
+  }, []);
+
+  useEffect(() => {
+    check();
+    const observer = new ResizeObserver(check);
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [check, value, displayValue]);
+
+  const shouldShowTooltip = wasTrimmedByChars || isOverflowing;
+
+  const content = (
+    <span ref={ref} className={className}>
+      {displayValue}
+    </span>
+  );
+
+  if (!shouldShowTooltip) return content;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent className={tooltipClassName}>{value}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSwitchIssue, billingIssue = null, onBillingIssueChange, onManualEntry, commentDraft = "", onCommentDraftChange }: ActiveTicketSectionProps) {
   const { t } = useTranslation();
   const selectedIssue = useIssueStore((s) => s.selectedIssue);
   const setSearchQuery = useIssueStore((s) => s.setSearchQuery);
@@ -132,6 +191,7 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
   const [todayLoggedHours, setTodayLoggedHours] = useState(0);
   const [confirmReset, setConfirmReset] = useState(false);
   const [isSwitchTicketOpen, setIsSwitchTicketOpen] = useState(false);
+  const [isBillingIssueDialogOpen, setIsBillingIssueDialogOpen] = useState(false);
   const [isCommentEditorOpen, setIsCommentEditorOpen] = useState(false);
   const [commentEditorValue, setCommentEditorValue] = useState("");
   const [commentEditorSize, setCommentEditorSize] = useState<{ width: number; height: number }>(() => readStoredCommentEditorSize());
@@ -234,6 +294,18 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
     handleSwitchDialogOpenChange(false);
   }, [handleSwitchDialogOpenChange, onSwitchIssue, selectedIssue?.id]);
 
+  const handleBillingIssueDialogOpenChange = useCallback((nextOpen: boolean) => {
+    if (!nextOpen) {
+      setSearchQuery("");
+    }
+    setIsBillingIssueDialogOpen(nextOpen);
+  }, [setSearchQuery]);
+
+  const handleBillingIssueSelected = useCallback((issue: RedmineIssue) => {
+    onBillingIssueChange?.(issue);
+    handleBillingIssueDialogOpenChange(false);
+  }, [handleBillingIssueDialogOpenChange, onBillingIssueChange]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -270,6 +342,8 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
   const todayHours = timer.elapsedSeconds / 3600;
   const todayTotalHours = todayLoggedHours + todayHours;
   const totalSpent = (selectedIssue.spent_hours ?? 0) + todayHours;
+  const logTargetIssue = billingIssue ?? selectedIssue;
+  const isLoggingOnSelectedIssue = logTargetIssue.id === selectedIssue.id;
 
   const estimated = selectedIssue.estimated_hours ?? 0;
   const remaining = estimated > 0 ? estimated - totalSpent : 0;
@@ -280,14 +354,16 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
   return (
     <div className="rounded-xl bg-surface-container border-l-4 border-l-tertiary border border-border overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-        {/* Ticket details (cols 1-4) */}
-        <div className="lg:col-span-4 p-4 sm:p-6 border-b lg:border-b-0 lg:border-r border-border flex flex-col justify-between">
+        {/* Ticket details (cols 1-6) */}
+        <div className="lg:col-span-6 p-4 sm:p-6 border-b lg:border-b-0 lg:border-r border-border flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-primary/15 text-primary">
-                {selectedIssue.status.name}
+              <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded shrink-0">
+                #{selectedIssue.id}
               </span>
-              <span className="text-xs text-muted-foreground">#{selectedIssue.id}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-surface-highest px-2 py-0.5 rounded min-w-0">
+                {selectedIssue.project.name}
+              </span>
               <div className="ml-auto flex items-center gap-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -335,62 +411,142 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
               </div>
             </div>
             <TruncatedIssueTitle title={selectedIssue.subject} />
-            <span className="text-xs text-muted-foreground uppercase tracking-wide">
-              {selectedIssue.project.name}
-            </span>
+
           </div>
 
-          <div className="mt-4 space-y-3">
-            <div className="rounded-md border border-border bg-surface-low p-2.5">
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
-                  {t("activeTicket.draftCommentLabel")}
+          <div className="mt-4 flex flex-1 min-h-0 flex-col gap-3">
+            <div className="rounded-md border border-border bg-surface-low p-3 flex-1 min-h-[170px] flex flex-col">
+              <div className="mb-2 flex items-center gap-2 min-w-0">
+                <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading shrink-0">
+                  {t("activeTicket.logOnLabel")}:
                 </span>
-                {onCommentDraftChange && (
-                  <Popover open={isCommentEditorOpen} onOpenChange={handleCommentEditorOpenChange}>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]">
-                        {trimmedDraftComment ? t("activeTicket.draftCommentEdit") : t("activeTicket.draftCommentAdd")}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-xs font-semibold text-muted-foreground bg-surface-highest px-2 py-0.5 rounded shrink-0">
+                      #{logTargetIssue.id}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm wrap-break-word">
+                    {logTargetIssue.project.name}
+                  </TooltipContent>
+                </Tooltip>
+                <TruncatedInlineLabel
+                  value={logTargetIssue.subject}
+                  maxChars={64}
+                  className={`text-xs min-w-0 flex-1 inline-block truncate ${isLoggingOnSelectedIssue ? "text-muted-foreground/85" : "text-foreground"}`}
+                  tooltipClassName="max-w-sm wrap-break-word"
+                />
+                <div className="ml-auto flex items-center gap-1 shrink-0">
+                  {onBillingIssueChange && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleBillingIssueDialogOpenChange(true)}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("activeTicket.logOnChange")}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  {onBillingIssueChange && !isLoggingOnSelectedIssue && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => onBillingIssueChange(null)}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{t("activeTicket.logOnUseActive")}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                      >
+                        <CircleHelp className="w-3.5 h-3.5" />
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      ref={commentEditorContentRef}
-                      side="bottom"
-                      align="start"
-                      className="draft-comment-editor-resizable max-w-[calc(100vw-2rem)] p-3 resize overflow-auto min-w-[280px] min-h-[210px] flex flex-col"
-                      style={{
-                        width: `${commentEditorSize.width}px`,
-                        height: `${commentEditorSize.height}px`,
-                      }}
-                    >
-                      <p className="mb-2 text-sm font-medium">{t("activeTicket.draftCommentEditorTitle")}</p>
-                      <div className="flex-1 min-h-0">
-                        <textarea
-                          rows={4}
-                          value={commentEditorValue}
-                          onChange={(event) => setCommentEditorValue(event.target.value)}
-                          placeholder={t("activeTicket.draftCommentPlaceholder")}
-                          className="w-full h-full min-h-[120px] rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
-                        />
-                      </div>
-                      <div className="mt-3 flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setIsCommentEditorOpen(false)}>
-                          {t("timeEntry.discard")}
-                        </Button>
-                        <Button size="sm" onClick={handleSaveDraftComment}>
-                          {t("timeEntry.confirm")}
-                        </Button>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                )}
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs text-xs">
+                      {t("activeTicket.logOnIssueDescription")}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
 
-              {trimmedDraftComment ? (
-                <TruncatedDraftComment comment={trimmedDraftComment} />
-              ) : (
-                <p className="text-xs text-muted-foreground/80">{t("activeTicket.draftCommentEmpty")}</p>
-              )}
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
+                    {t("activeTicket.draftCommentLabel")}
+                  </span>
+                  {onCommentDraftChange && (
+                    <Popover open={isCommentEditorOpen} onOpenChange={handleCommentEditorOpenChange}>
+                      <Tooltip>
+                        <PopoverTrigger asChild>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={trimmedDraftComment ? t("activeTicket.draftCommentEdit") : t("activeTicket.draftCommentAdd")}
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                            >
+                              {trimmedDraftComment ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                            </Button>
+                          </TooltipTrigger>
+                        </PopoverTrigger>
+                        <TooltipContent className="text-xs">
+                          {trimmedDraftComment ? t("activeTicket.draftCommentEdit") : t("activeTicket.draftCommentAdd")}
+                        </TooltipContent>
+                      </Tooltip>
+                      <PopoverContent
+                        ref={commentEditorContentRef}
+                        side="bottom"
+                        align="start"
+                        className="draft-comment-editor-resizable max-w-[calc(100vw-2rem)] p-3 resize overflow-auto min-w-[280px] min-h-[210px] flex flex-col"
+                        style={{
+                          width: `${commentEditorSize.width}px`,
+                          height: `${commentEditorSize.height}px`,
+                        }}
+                      >
+                        <p className="mb-2 text-sm font-medium">{t("activeTicket.draftCommentEditorTitle")}</p>
+                        <div className="flex-1 min-h-0">
+                          <textarea
+                            rows={4}
+                            value={commentEditorValue}
+                            onChange={(event) => setCommentEditorValue(event.target.value)}
+                            placeholder={t("activeTicket.draftCommentPlaceholder")}
+                            className="w-full h-full min-h-[120px] rounded-md bg-muted border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-primary focus:ring-1 focus:ring-primary/20 resize-none outline-none"
+                          />
+                        </div>
+                        <div className="mt-3 flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" onClick={() => setIsCommentEditorOpen(false)}>
+                            {t("timeEntry.discard")}
+                          </Button>
+                          <Button size="sm" onClick={handleSaveDraftComment}>
+                            {t("timeEntry.confirm")}
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+
+                {trimmedDraftComment ? (
+                  <TruncatedDraftComment comment={trimmedDraftComment} />
+                ) : (
+                  <p className="text-xs text-muted-foreground/80 italic">{t("activeTicket.draftCommentEmpty")}</p>
+                )}
+              </div>
             </div>
 
             {totalSpent > 0 && (
@@ -452,8 +608,8 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
           </div>
         </div>
 
-        {/* Timer display (cols 5-9) */}
-        <div className="lg:col-span-5 p-4 sm:p-6 flex flex-col items-center justify-center">
+        {/* Timer display (cols 7-10) */}
+        <div className="lg:col-span-4 p-4 sm:p-6 flex flex-col items-center justify-center">
           {timer.startTime && (
             <div className="flex items-center gap-1.5 mb-3 flex-wrap justify-center">
               <Clock className="w-3.5 h-3.5 text-muted-foreground" />
@@ -590,13 +746,13 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
           )}
         </div>
 
-        {/* Totals panel (cols 10-12) */}
-        <div className="lg:col-span-3 bg-surface-low p-4 sm:p-6 flex flex-row lg:flex-col justify-center gap-4 border-t lg:border-t-0 lg:border-l border-border">
+        {/* Totals panel (cols 11-12) */}
+        <div className="lg:col-span-2 bg-surface-low p-3 sm:p-4 flex flex-row lg:flex-col justify-center gap-3 border-t lg:border-t-0 lg:border-l border-border">
           <div className="flex-1 min-w-0">
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
               {t("activeTicket.totals.redmine")}
             </span>
-            <p className="text-xl sm:text-2xl font-semibold font-heading text-foreground tabular-nums mt-1">
+            <p className="text-lg sm:text-xl font-semibold font-heading text-foreground tabular-nums mt-1">
               {formatHoursMinutes(totalSpent)}
             </p>
           </div>
@@ -607,7 +763,7 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
             <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase font-heading">
               {t("activeTicket.totals.today")}
             </span>
-            <p className="text-xl sm:text-2xl font-semibold font-heading text-tertiary tabular-nums mt-1">
+            <p className="text-lg sm:text-xl font-semibold font-heading text-tertiary tabular-nums mt-1">
               {formatHoursMinutes(todayTotalHours)}
             </p>
           </div>
@@ -622,6 +778,25 @@ export function ActiveTicketSection({ timer, onReset, onStop, onClearIssue, onSw
           </DialogHeader>
           <div className="pt-1">
             <SearchBar onIssueSelected={handleSwitchTicketSelected} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBillingIssueDialogOpen} onOpenChange={handleBillingIssueDialogOpenChange}>
+        <DialogContent className="bg-card border-border sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t("activeTicket.logOnIssueTitle")}</DialogTitle>
+            <DialogDescription>{t("activeTicket.logOnIssueDescription")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 pt-1">
+            <SearchBar onIssueSelected={handleBillingIssueSelected} />
+            {onBillingIssueChange && billingIssue && (
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => onBillingIssueChange(null)}>
+                  {t("activeTicket.logOnUseActive")}
+                </Button>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

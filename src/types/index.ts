@@ -59,6 +59,8 @@ export interface WorkSession {
   createdAt: string; // ISO timestamp
 }
 
+export type WorkdayOverride = "working" | "off";
+
 export interface UserSettings {
   redmine_url: string;
   api_key: string;
@@ -77,6 +79,7 @@ export interface UserSettings {
   idle_threshold_minutes: number;
   daily_work_hours: number;
   daily_work_tolerance_minutes: number;
+  workday_overrides: Record<string, WorkdayOverride>;
   show_weekends_in_weekly_activity: boolean;
   theme: "light" | "dark" | "system";
 }

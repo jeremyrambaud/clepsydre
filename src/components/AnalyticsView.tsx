@@ -8,7 +8,7 @@ import { TimeEntryModal } from "@/components/TimeEntryModal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { fetchTimeEntriesForDateRange } from "@/lib/redmine";
 import { useSettingsStore } from "@/store";
-import type { RedmineIssue, WorkSession } from "@/types";
+import type { RedmineIssue, WorkSession, WorkdayOverride } from "@/types";
 
 const DEFAULT_DAILY_WORK_HOURS = 7;
 const DEFAULT_DAILY_TARGET_TOLERANCE_MINUTES = 60;
@@ -48,6 +48,18 @@ interface TimelineLaneItem {
   start: number;
   end: number;
   lane: number;
+}
+
+interface RankingItem {
+  key: string;
+  label: string;
+  minutes: number;
+}
+
+interface CalendarContextMenuState {
+  dateKey: string;
+  x: number;
+  y: number;
 }
 
 function toDateKey(date: Date): string {
@@ -224,8 +236,10 @@ function getWeeklySeriesColor(index: number, totalSeries: number): string {
 export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith("fr") ? "fr-FR" : "en-US";
+  const setSettings = useSettingsStore((s) => s.setSettings);
   const dailyWorkHours = useSettingsStore((s) => s.settings.daily_work_hours);
   const dailyWorkToleranceMinutes = useSettingsStore((s) => s.settings.daily_work_tolerance_minutes);
+  const workdayOverrides = useSettingsStore((s) => s.settings.workday_overrides ?? {});
   const showWeekendsInWeeklyActivity = useSettingsStore((s) => s.settings.show_weekends_in_weekly_activity);
 
   const monthRequestRef = useRef(0);
@@ -241,6 +255,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualIssue, setManualIssue] = useState<RedmineIssue | null>(null);
   const [manualAnchorTime, setManualAnchorTime] = useState<Date>(new Date());
+  const [calendarContextMenu, setCalendarContextMenu] = useState<CalendarContextMenuState | null>(null);
   const [hoveredLegendProject, setHoveredLegendProject] = useState<string | null>(null);
   const [legendHoverPosition, setLegendHoverPosition] = useState<{ x: number; y: number } | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
@@ -250,6 +265,19 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const calendarCells = useMemo(() => buildCalendarCells(activeMonth), [activeMonth]);
+
+  const frenchHolidayKeys = useMemo(() => {
+    const years = [...new Set(calendarCells.map((cell) => cell.date.getFullYear()))];
+    const allHolidayKeys = new Set<string>();
+
+    years.forEach((year) => {
+      getFrenchPublicHolidays(year).forEach(({ dateKey }) => {
+        allHolidayKeys.add(dateKey);
+      });
+    });
+
+    return allHolidayKeys;
+  }, [calendarCells]);
 
   const frenchHolidayNamesByDate = useMemo(() => {
     if (!i18n.language.startsWith("fr")) return new Map<string, string>();
@@ -265,6 +293,30 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
 
     return allHolidays;
   }, [calendarCells, i18n.language]);
+
+  useEffect(() => {
+    if (!calendarContextMenu) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setCalendarContextMenu(null);
+      }
+    };
+
+    const handleViewportChange = () => {
+      setCalendarContextMenu(null);
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [calendarContextMenu]);
 
   const calendarRange = useMemo(() => {
     const firstCell = calendarCells[0];
@@ -369,6 +421,21 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     return monthSessions;
   }, [monthSessions]);
 
+  const activeMonthRange = useMemo(() => {
+    const monthStart = startOfMonth(activeMonth);
+    const monthEnd = endOfMonth(activeMonth);
+    return {
+      startKey: toDateKey(monthStart),
+      endKey: toDateKey(monthEnd),
+    };
+  }, [activeMonth]);
+
+  const activeMonthSessions = useMemo(() => {
+    return filteredMonthSessions.filter(
+      (session) => session.spentOn >= activeMonthRange.startKey && session.spentOn <= activeMonthRange.endKey
+    );
+  }, [activeMonthRange.endKey, activeMonthRange.startKey, filteredMonthSessions]);
+
   const filteredCurrentWeekSessions = useMemo(() => {
     return filteredMonthSessions.filter(
       (session) => session.spentOn >= weekRanges.thisWeekFrom && session.spentOn <= weekRanges.thisWeekTo
@@ -439,6 +506,45 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     return Math.max(0, targetDailyMinutes - targetDailyToleranceMinutes);
   }, [targetDailyMinutes, targetDailyToleranceMinutes]);
 
+  const applyWorkdayOverride = (dateKey: string, nextOverride: WorkdayOverride | null) => {
+    const next = { ...workdayOverrides };
+
+    if (nextOverride === null) {
+      delete next[dateKey];
+    } else {
+      next[dateKey] = nextOverride;
+    }
+
+    setSettings({ workday_overrides: next });
+    setCalendarContextMenu(null);
+  };
+
+  const calendarContextMenuDate = useMemo(() => {
+    if (!calendarContextMenu) return null;
+    const parsed = new Date(`${calendarContextMenu.dateKey}T00:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [calendarContextMenu]);
+
+  const contextMenuDayStatus = useMemo(() => {
+    if (!calendarContextMenu || !calendarContextMenuDate) {
+      return {
+        override: null as WorkdayOverride | null,
+        isWorkingDay: false,
+      };
+    }
+
+    const override = workdayOverrides[calendarContextMenu.dateKey] ?? null;
+    const isWeekendDay = isWeekend(calendarContextMenuDate);
+    const isHoliday = frenchHolidayKeys.has(calendarContextMenu.dateKey);
+    const defaultWorkingDay = !isWeekendDay && !isHoliday;
+    const isWorkingDay = override === "working" ? true : override === "off" ? false : defaultWorkingDay;
+
+    return {
+      override,
+      isWorkingDay,
+    };
+  }, [calendarContextMenu, calendarContextMenuDate, frenchHolidayKeys, workdayOverrides]);
+
   const monthlyCompletion = useMemo(() => {
     const monthStart = startOfMonth(activeMonth);
     const monthEnd = endOfMonth(activeMonth);
@@ -449,7 +555,10 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
       return {
         isFutureMonth: true,
         requiredWorkdays: 0,
+        expectedMinutes: 0,
+        workedMinutes: 0,
         missingMinutes: 0,
+        overMinutes: 0,
       };
     }
 
@@ -463,7 +572,8 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     }
 
     let requiredWorkdays = 0;
-    let missingMinutes = 0;
+    let expectedMinutes = 0;
+    let workedMinutes = 0;
     const cursor = new Date(monthStart);
 
     while (cursor <= cutoff) {
@@ -472,21 +582,31 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
       const isWeekendDay = day === 0 || day === 6;
       const isHoliday = holidayKeys.has(dateKey);
 
-      if (!isWeekendDay && !isHoliday) {
+      const override = workdayOverrides[dateKey];
+      const isWorkingDay = override === "working" ? true : override === "off" ? false : (!isWeekendDay && !isHoliday);
+
+      if (isWorkingDay) {
         requiredWorkdays += 1;
+        expectedMinutes += targetDailyMinutes;
         const dayMinutes = monthDailyMinutes.get(dateKey) ?? 0;
-        missingMinutes += Math.max(0, minimumDailyMinutes + dailyWorkToleranceMinutes - dayMinutes);
+        workedMinutes += dayMinutes;
       }
 
       cursor.setDate(cursor.getDate() + 1);
     }
 
+    const missingMinutes = Math.max(0, expectedMinutes - workedMinutes);
+    const overMinutes = Math.max(0, workedMinutes - expectedMinutes);
+
     return {
       isFutureMonth: false,
       requiredWorkdays,
+      expectedMinutes,
+      workedMinutes,
       missingMinutes,
+      overMinutes,
     };
-  }, [activeMonth, minimumDailyMinutes, monthDailyMinutes]);
+  }, [activeMonth, monthDailyMinutes, targetDailyMinutes, workdayOverrides]);
 
   const timelineLaneLayout = useMemo((): { items: TimelineLaneItem[]; laneCount: number } => {
     const entries = selectedDaySessions
@@ -615,6 +735,56 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     });
     return byProject;
   }, [filteredCurrentWeekSessions]);
+
+  const monthlyTaskRanking = useMemo((): RankingItem[] => {
+    const totalsByIssue = new Map<number, RankingItem>();
+
+    activeMonthSessions.forEach((session) => {
+      const issueId = session.issue.id;
+      const existing = totalsByIssue.get(issueId);
+      const minutes = getSessionDurationMinutes(session);
+
+      if (existing) {
+        existing.minutes += minutes;
+        return;
+      }
+
+      totalsByIssue.set(issueId, {
+        key: `issue-${issueId}`,
+        label: `#${issueId} · ${session.issue.subject}`,
+        minutes,
+      });
+    });
+
+    return [...totalsByIssue.values()]
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 8);
+  }, [activeMonthSessions]);
+
+  const monthlyProjectRanking = useMemo((): RankingItem[] => {
+    const totalsByProject = new Map<number, RankingItem>();
+
+    activeMonthSessions.forEach((session) => {
+      const projectId = session.issue.project.id;
+      const existing = totalsByProject.get(projectId);
+      const minutes = getSessionDurationMinutes(session);
+
+      if (existing) {
+        existing.minutes += minutes;
+        return;
+      }
+
+      totalsByProject.set(projectId, {
+        key: `project-${projectId}`,
+        label: session.issue.project.name,
+        minutes,
+      });
+    });
+
+    return [...totalsByProject.values()]
+      .sort((a, b) => b.minutes - a.minutes)
+      .slice(0, 8);
+  }, [activeMonthSessions]);
 
   const weeklyChartSeries = useMemo(() => {
     return weeklyStackData.projects.map((project, index) => {
@@ -797,6 +967,196 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     } as const;
   }, [activeMonth, locale, t, weeklyChartSeries, weeklyStackData.points]);
 
+  const monthlyTaskRankingChartOptions = useMemo(() => {
+    const mutedForeground = readRootColorVar("--muted-foreground", "#c6c6cd");
+    const border = readRootColorVar("--border", "rgba(69, 70, 77, 0.2)");
+    const strongGrid = readRootColorVar("--input", "rgba(69, 70, 77, 0.3)");
+    const taskColor = readRootColorVar("--chart-2", "#EE935A");
+    const hourFormatter = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 1,
+    });
+
+    return {
+      chart: {
+        type: "bar",
+        backgroundColor: "transparent",
+        spacing: [8, 4, 4, 4],
+        animation: false,
+        style: {
+          fontFamily: "var(--font-sans, inherit)",
+        },
+      },
+      title: { text: undefined },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      xAxis: {
+        categories: monthlyTaskRanking.map((item) => item.label),
+        lineColor: border,
+        tickLength: 0,
+        labels: {
+          style: {
+            color: mutedForeground,
+            fontSize: "11px",
+          },
+        },
+      },
+      yAxis: {
+        min: 0,
+        title: { text: undefined },
+        gridLineColor: strongGrid,
+        labels: {
+          style: {
+            color: mutedForeground,
+            fontSize: "10px",
+          },
+          formatter: function (this: any): string {
+            const minutes = typeof this.value === "number" ? this.value : Number(this.value) || 0;
+            const hours = minutes / 60;
+            return `${hourFormatter.format(hours)}h`;
+          },
+        },
+      },
+      tooltip: {
+        useHTML: true,
+        formatter: function (this: any): string {
+          const minutes = typeof this.y === "number" ? this.y : 0;
+          return `<span style=\"font-size: 11px\">${this.x}</span><br/><b>${formatMinutesAsHoursLabel(minutes)}</b>`;
+        },
+      },
+      plotOptions: {
+        series: {
+          animation: false,
+        },
+        bar: {
+          borderWidth: 0,
+          borderRadius: 4,
+          pointPadding: 0.08,
+          groupPadding: 0.12,
+          dataLabels: {
+            enabled: true,
+            crop: false,
+            overflow: "none",
+            style: {
+              color: mutedForeground,
+              textOutline: "none",
+              fontSize: "10px",
+            },
+            formatter: function (this: any): string {
+              const minutes = typeof this.y === "number" ? this.y : 0;
+              return formatMinutesAsHoursLabel(minutes);
+            },
+          },
+        },
+      },
+      accessibility: {
+        enabled: true,
+        description: t("analytics.monthlyTaskRanking"),
+      },
+      series: [
+        {
+          type: "bar",
+          data: monthlyTaskRanking.map((item) => item.minutes),
+          color: taskColor,
+        },
+      ],
+    } as const;
+  }, [locale, monthlyTaskRanking, t]);
+
+  const monthlyProjectRankingChartOptions = useMemo(() => {
+    const mutedForeground = readRootColorVar("--muted-foreground", "#c6c6cd");
+    const border = readRootColorVar("--border", "rgba(69, 70, 77, 0.2)");
+    const strongGrid = readRootColorVar("--input", "rgba(69, 70, 77, 0.3)");
+    const projectColor = readRootColorVar("--chart-3", "#79C879");
+    const hourFormatter = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 1,
+    });
+
+    return {
+      chart: {
+        type: "bar",
+        backgroundColor: "transparent",
+        spacing: [8, 4, 4, 4],
+        animation: false,
+        style: {
+          fontFamily: "var(--font-sans, inherit)",
+        },
+      },
+      title: { text: undefined },
+      credits: { enabled: false },
+      legend: { enabled: false },
+      xAxis: {
+        categories: monthlyProjectRanking.map((item) => item.label),
+        lineColor: border,
+        tickLength: 0,
+        labels: {
+          style: {
+            color: mutedForeground,
+            fontSize: "11px",
+          },
+        },
+      },
+      yAxis: {
+        min: 0,
+        title: { text: undefined },
+        gridLineColor: strongGrid,
+        labels: {
+          style: {
+            color: mutedForeground,
+            fontSize: "10px",
+          },
+          formatter: function (this: any): string {
+            const minutes = typeof this.value === "number" ? this.value : Number(this.value) || 0;
+            const hours = minutes / 60;
+            return `${hourFormatter.format(hours)}h`;
+          },
+        },
+      },
+      tooltip: {
+        useHTML: true,
+        formatter: function (this: any): string {
+          const minutes = typeof this.y === "number" ? this.y : 0;
+          return `<span style=\"font-size: 11px\">${this.x}</span><br/><b>${formatMinutesAsHoursLabel(minutes)}</b>`;
+        },
+      },
+      plotOptions: {
+        series: {
+          animation: false,
+        },
+        bar: {
+          borderWidth: 0,
+          borderRadius: 4,
+          pointPadding: 0.08,
+          groupPadding: 0.12,
+          dataLabels: {
+            enabled: true,
+            crop: false,
+            overflow: "none",
+            style: {
+              color: mutedForeground,
+              textOutline: "none",
+              fontSize: "10px",
+            },
+            formatter: function (this: any): string {
+              const minutes = typeof this.y === "number" ? this.y : 0;
+              return formatMinutesAsHoursLabel(minutes);
+            },
+          },
+        },
+      },
+      accessibility: {
+        enabled: true,
+        description: t("analytics.monthlyProjectRanking"),
+      },
+      series: [
+        {
+          type: "bar",
+          data: monthlyProjectRanking.map((item) => item.minutes),
+          color: projectColor,
+        },
+      ],
+    } as const;
+  }, [locale, monthlyProjectRanking, t]);
+
   const timelineRange = useMemo(() => {
     if (selectedDaySessions.length === 0) {
       return { startMinutes: 8 * 60, endMinutes: 17 * 60 };
@@ -964,9 +1324,19 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
               </>
             ) : monthlyCompletion.missingMinutes <= 0 ? (
               <>
-                <div className="text-3xl font-semibold font-heading text-tertiary">{t("analytics.monthlyCompletionOk")}</div>
+                <div className="text-3xl font-semibold font-heading text-tertiary">
+                  {monthlyCompletion.overMinutes > 0
+                    ? `${t("analytics.monthlyCompletionOk")} +${formatMinutesAsHoursLabel(monthlyCompletion.overMinutes)}`
+                    : t("analytics.monthlyCompletionOk")}
+                </div>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {isCurrentActiveMonth ? t("analytics.monthlyCompletionOkHint") : t("analytics.monthlyCompletionOkHintMonth")}
+                  {monthlyCompletion.overMinutes > 0
+                    ? t("analytics.monthlyCompletionAboveTarget", {
+                        value: formatMinutesAsHoursLabel(monthlyCompletion.overMinutes),
+                      })
+                    : isCurrentActiveMonth
+                      ? t("analytics.monthlyCompletionOkHint")
+                      : t("analytics.monthlyCompletionOkHintMonth")}
                 </p>
               </>
             ) : (
@@ -1108,27 +1478,50 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
           <div className="grid flex-1 min-h-0 auto-rows-fr grid-cols-7 gap-1 overflow-y-auto">
             {calendarCells.map((cell) => {
               const dayMinutes = monthDailyMinutes.get(cell.dateKey) ?? 0;
-              const isWithinDailyTarget =
-                dayMinutes >= minimumDailyMinutes
-                && dayMinutes <= targetDailyMinutes + targetDailyToleranceMinutes;
               const isSelected = cell.dateKey === effectiveSelectedDayKey;
               const isInSelectedWeek = cell.dateKey >= weekRanges.thisWeekFrom && cell.dateKey <= weekRanges.thisWeekTo;
+              const dayOverride = workdayOverrides[cell.dateKey] ?? null;
+              const isForcedWorking = dayOverride === "working";
+              const isForcedOff = dayOverride === "off";
+              const isHoliday = frenchHolidayKeys.has(cell.dateKey);
+              const isWeekendDay = isWeekend(cell.date);
+              const defaultWorkingDay = !isWeekendDay && !isHoliday;
+              const isWorkingDay = isForcedWorking ? true : isForcedOff ? false : defaultWorkingDay;
+              const isWithinDailyTarget =
+                isWorkingDay
+                && dayMinutes >= minimumDailyMinutes
+                && dayMinutes <= targetDailyMinutes + targetDailyToleranceMinutes;
               const holidayNameKey = frenchHolidayNamesByDate.get(cell.dateKey);
               const holidayName = holidayNameKey ? t(`analytics.holidayNames.${holidayNameKey}`) : "";
-              const isHoliday = Boolean(holidayName);
-              const isWeekendDay = isWeekend(cell.date);
               const dayLabel = cell.date.toLocaleDateString(locale, {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               });
-              const specialLabel = isHoliday
+              const holidayLabel = holidayName
                 ? `${t("analytics.publicHoliday")}: ${holidayName}`
-                : isWeekendDay
-                  ? t("analytics.weekend")
-                  : "";
+                : t("analytics.publicHoliday");
+              const specialLabel = isForcedWorking
+                ? t("analytics.dayStatusWorking")
+                : isForcedOff
+                  ? t("analytics.dayStatusNonWorking")
+                  : isHoliday
+                    ? holidayLabel
+                    : isWeekendDay
+                      ? t("analytics.weekend")
+                      : "";
               const cellTitle = specialLabel ? `${dayLabel} - ${specialLabel}` : dayLabel;
+
+              const overrideClass = isForcedWorking
+                ? cell.inCurrentMonth
+                  ? "border-tertiary/35 bg-tertiary/10 hover:bg-tertiary/15"
+                  : "border-tertiary/22 bg-tertiary/5 text-muted-foreground/70 hover:bg-tertiary/10"
+                : isForcedOff
+                  ? cell.inCurrentMonth
+                    ? "border-chart-4/30 bg-chart-4/10 hover:bg-chart-4/14"
+                    : "border-chart-4/16 bg-chart-4/4 text-muted-foreground/70 hover:bg-chart-4/7"
+                  : null;
 
               const specialClass = isHoliday
                 ? cell.inCurrentMonth
@@ -1154,9 +1547,26 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                   type="button"
                   onClick={() => {
                     setSelectedDayKey(cell.dateKey);
+                    setCalendarContextMenu(null);
                     if (!cell.inCurrentMonth) {
                       setActiveMonth(startOfMonth(cell.date));
                     }
+                  }}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setSelectedDayKey(cell.dateKey);
+
+                    const menuWidth = 260;
+                    const menuHeight = 190;
+                    const margin = 8;
+                    const maxX = Math.max(margin, window.innerWidth - menuWidth - margin);
+                    const maxY = Math.max(margin, window.innerHeight - menuHeight - margin);
+
+                    setCalendarContextMenu({
+                      dateKey: cell.dateKey,
+                      x: Math.max(margin, Math.min(event.clientX, maxX)),
+                      y: Math.max(margin, Math.min(event.clientY, maxY)),
+                    });
                   }}
                   title={cellTitle}
                   aria-label={cellTitle}
@@ -1165,17 +1575,23 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
                       ? "border-tertiary bg-tertiary/15"
                       : isInSelectedWeek
                         ? selectedWeekClass
-                        : specialClass
-                          ? specialClass
-                          : cell.inCurrentMonth
-                            ? "border-border bg-surface-low hover:bg-surface-high"
-                            : "border-border/25 bg-surface-low/40 text-muted-foreground/65 hover:bg-surface-low/55"
+                        : overrideClass
+                          ? overrideClass
+                          : specialClass
+                            ? specialClass
+                            : cell.inCurrentMonth
+                              ? "border-border bg-surface-low hover:bg-surface-high"
+                              : "border-border/25 bg-surface-low/40 text-muted-foreground/65 hover:bg-surface-low/55"
                   }`}
                 >
                   <div className="flex flex-col items-start">
                     <div
                       className={`text-[10px] font-semibold ${
-                        isHoliday
+                        isForcedWorking
+                          ? "text-tertiary/90"
+                          : isForcedOff
+                            ? "text-chart-4/90"
+                            : isHoliday
                           ? "text-chart-4/85"
                           : isWeekendDay
                             ? "text-primary/85"
@@ -1375,6 +1791,114 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
           </div>
         )}
       </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="relative rounded-xl border border-border bg-surface-container p-4 min-h-80">
+          <h3 className="text-3 font-semibold font-heading text-foreground">{t("analytics.monthlyTaskRanking")}</h3>
+          <p className="mb-4 text-sm text-muted-foreground">{t("analytics.monthlyTaskRankingSubtitle")}</p>
+
+          <div className="h-64">
+            {isMonthLoading ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="ml-2">{t("analytics.loading")}</span>
+              </div>
+            ) : monthlyTaskRanking.length > 0 ? (
+              <Chart
+                options={monthlyTaskRankingChartOptions as any}
+                containerProps={{
+                  className: "h-full w-full",
+                }}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("analytics.noData")}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="relative rounded-xl border border-border bg-surface-container p-4 min-h-80">
+          <h3 className="text-3 font-semibold font-heading text-foreground">{t("analytics.monthlyProjectRanking")}</h3>
+          <p className="mb-4 text-sm text-muted-foreground">{t("analytics.monthlyProjectRankingSubtitle")}</p>
+
+          <div className="h-64">
+            {isMonthLoading ? (
+              <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="ml-2">{t("analytics.loading")}</span>
+              </div>
+            ) : monthlyProjectRanking.length > 0 ? (
+              <Chart
+                options={monthlyProjectRankingChartOptions as any}
+                containerProps={{
+                  className: "h-full w-full",
+                }}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {t("analytics.noData")}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {calendarContextMenu && calendarContextMenuDate && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setCalendarContextMenu(null)}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <div
+            className="absolute w-64 rounded-lg border border-border bg-background p-2 shadow-lg"
+            style={{
+              left: `${calendarContextMenu.x}px`,
+              top: `${calendarContextMenu.y}px`,
+            }}
+            onClick={(event) => event.stopPropagation()}
+            onContextMenu={(event) => event.preventDefault()}
+          >
+            <div className="px-2 pb-2">
+              <p className="text-xs font-semibold text-foreground">
+                {calendarContextMenuDate.toLocaleDateString(locale, {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t("analytics.dayStatusMenuTitle")}: {contextMenuDayStatus.isWorkingDay ? t("analytics.dayStatusWorking") : t("analytics.dayStatusNonWorking")}
+              </p>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <button
+              type="button"
+              className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-high"
+              onClick={() => applyWorkdayOverride(calendarContextMenu.dateKey, "working")}
+            >
+              {t("analytics.markAsWorkingDay")}
+            </button>
+            <button
+              type="button"
+              className="w-full rounded-md px-2 py-1.5 text-left text-xs text-foreground hover:bg-surface-high"
+              onClick={() => applyWorkdayOverride(calendarContextMenu.dateKey, "off")}
+            >
+              {t("analytics.markAsNonWorkingDay")}
+            </button>
+            <button
+              type="button"
+              className="w-full rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-surface-high disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => applyWorkdayOverride(calendarContextMenu.dateKey, null)}
+              disabled={!contextMenuDayStatus.override}
+            >
+              {t("analytics.resetDayStatus")}
+            </button>
+          </div>
+        </div>
+      )}
 
       {manualModalOpen && (
         <TimeEntryModal

@@ -39,6 +39,7 @@ const defaultSettings: UserSettings = {
   idle_threshold_minutes: 15,
   daily_work_hours: 7,
   daily_work_tolerance_minutes: 60,
+  workday_overrides: {},
   show_weekends_in_weekly_activity: true,
   theme: "dark",
 };

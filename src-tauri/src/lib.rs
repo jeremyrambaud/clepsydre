@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{
-    LogicalSize, Manager, PhysicalPosition, Position, Size,
+    LogicalPosition, LogicalSize, Manager, Position, Size,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Window, WindowEvent,
@@ -65,12 +65,14 @@ fn tray_i18n() -> TrayI18n {
     }
 }
 
+// Sizes and positions are stored in LOGICAL units so they remain consistent
+// across displays with different scale factors (HiDPI/Retina vs standard).
 #[derive(serde::Serialize, serde::Deserialize)]
 struct StoredWindowState {
-    width: u32,
-    height: u32,
-    x: i32,
-    y: i32,
+    width: f64,
+    height: f64,
+    x: f64,
+    y: f64,
 }
 
 fn window_state_file_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
@@ -105,6 +107,11 @@ fn persist_window_state<R: tauri::Runtime>(window: &Window<R>) {
         return;
     }
 
+    // outer_size()/outer_position() return PHYSICAL pixels; convert to logical
+    // using the window's current scale factor before storing.
+    let Ok(scale) = window.scale_factor() else {
+        return;
+    };
     let Ok(size) = window.outer_size() else {
         return;
     };
@@ -112,11 +119,19 @@ fn persist_window_state<R: tauri::Runtime>(window: &Window<R>) {
         return;
     };
 
+    let logical_size = size.to_logical::<f64>(scale);
+    let logical_position = position.to_logical::<f64>(scale);
+
+    // Ignore bogus sizes (can happen while the window is hidden/minimized).
+    if logical_size.width < 1.0 || logical_size.height < 1.0 {
+        return;
+    }
+
     let state = StoredWindowState {
-        width: size.width,
-        height: size.height,
-        x: position.x,
-        y: position.y,
+        width: logical_size.width,
+        height: logical_size.height,
+        x: logical_position.x,
+        y: logical_position.y,
     };
 
     save_window_state(&window.app_handle(), &state);
@@ -131,11 +146,24 @@ fn restore_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
         return;
     };
 
-    let clamped_width = (saved.width as f64).max(MIN_WINDOW_WIDTH);
-    let clamped_height = (saved.height as f64).max(MIN_WINDOW_HEIGHT);
+    let mut width = saved.width.max(MIN_WINDOW_WIDTH);
+    let mut height = saved.height.max(MIN_WINDOW_HEIGHT);
 
-    let _ = window.set_size(Size::Logical(LogicalSize::new(clamped_width, clamped_height)));
-    let _ = window.set_position(Position::Physical(PhysicalPosition::new(saved.x, saved.y)));
+    // Clamp to the current monitor's logical size to guard against stale or
+    // oversized values (e.g. data saved on a larger/HiDPI screen) that would
+    // otherwise make the window appear far too wide or tall.
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let monitor_logical = monitor.size().to_logical::<f64>(monitor.scale_factor());
+        if monitor_logical.width >= MIN_WINDOW_WIDTH {
+            width = width.min(monitor_logical.width);
+        }
+        if monitor_logical.height >= MIN_WINDOW_HEIGHT {
+            height = height.min(monitor_logical.height);
+        }
+    }
+
+    let _ = window.set_size(Size::Logical(LogicalSize::new(width, height)));
+    let _ = window.set_position(Position::Logical(LogicalPosition::new(saved.x, saved.y)));
 }
 
 fn update_endpoint_for_channel(channel: &str) -> &'static str {

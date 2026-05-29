@@ -8,6 +8,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useSettingsStore } from "@/store";
 import type { WorkSession } from "@/types";
 
+const AUTO_CONTEXT_COMMENT_PREFIX_REGEX = /^#\d+\s-\s.+$/;
+
+function stripAutoContextCommentPrefix(comment: string): string {
+  const normalized = comment.replace(/\r\n/g, "\n");
+  const [firstLine = "", ...restLines] = normalized.split("\n");
+
+  if (!AUTO_CONTEXT_COMMENT_PREFIX_REGEX.test(firstLine.trim())) {
+    return normalized;
+  }
+
+  return restLines.join("\n").replace(/^\n+/, "");
+}
+
 function TruncatedText({ children, className, tooltipClassName }: { children: string; className?: string; tooltipClassName?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -62,7 +75,9 @@ export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = fa
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
   const { issue } = session;
-  const sessionComment = session.comments.trim();
+  const loggedIssue = session.loggedIssue ?? issue;
+  const isLoggedOnDifferentIssue = loggedIssue.id !== issue.id;
+  const sessionComment = stripAutoContextCommentPrefix(session.comments).trim();
   const estimated = issue.estimated_hours ?? 0;
   const spent = cumulativeSpent ?? (issue.spent_hours ?? 0);
   const remaining = estimated - spent;
@@ -115,6 +130,11 @@ export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = fa
             <TruncatedText className="text-sm font-medium text-foreground block" tooltipClassName="max-w-xs">
               {issue.subject}
             </TruncatedText>
+            {isLoggedOnDifferentIssue && (
+              <TruncatedText className="text-[11px] text-muted-foreground block mt-1" tooltipClassName="max-w-sm">
+                {t("ticketRow.imputedOn", { issueId: loggedIssue.id, project: loggedIssue.project.name })}
+              </TruncatedText>
+            )}
             {sessionComment && (
               <TruncatedText
                 className="text-xs text-muted-foreground/90 block mt-1"

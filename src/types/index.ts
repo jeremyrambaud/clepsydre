@@ -48,6 +48,7 @@ export interface RedmineActivity {
 export interface WorkSession {
   id: string;
   issue: RedmineIssue;
+  loggedIssue?: RedmineIssue;
   hours: number;
   activityId: number;
   comments: string;

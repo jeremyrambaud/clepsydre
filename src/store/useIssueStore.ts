@@ -68,6 +68,11 @@ export const useIssueStore = create<IssueState>()(
       const idsToRefresh = new Set<number>();
       if (selectedIssue) idsToRefresh.add(selectedIssue.id);
       recentSessions.forEach((s) => idsToRefresh.add(s.issue.id));
+      recentSessions.forEach((s) => {
+        if (s.loggedIssue) {
+          idsToRefresh.add(s.loggedIssue.id);
+        }
+      });
 
       if (idsToRefresh.size === 0) return;
 
@@ -90,9 +95,13 @@ export const useIssueStore = create<IssueState>()(
             ? updatedMap.get(state.selectedIssue.id)!
             : state.selectedIssue,
         recentSessions: state.recentSessions.map((s) =>
-          updatedMap.has(s.issue.id)
-            ? { ...s, issue: updatedMap.get(s.issue.id)! }
-            : s
+          ({
+            ...s,
+            issue: updatedMap.get(s.issue.id) ?? s.issue,
+            loggedIssue: s.loggedIssue
+              ? (updatedMap.get(s.loggedIssue.id) ?? s.loggedIssue)
+              : s.loggedIssue,
+          })
         ),
       }));
     },

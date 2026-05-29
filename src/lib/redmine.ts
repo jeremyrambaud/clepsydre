@@ -23,6 +23,13 @@ interface PersistedEntryTimes {
   startedAt: string;
   stoppedAt: string;
   updatedAt: string;
+  issue?: RedmineIssue;
+  loggedIssue?: RedmineIssue;
+}
+
+interface PersistEntryMetadata {
+  issue?: RedmineIssue | null;
+  loggedIssue?: RedmineIssue | null;
 }
 
 type PersistedEntryTimesByDomain = Record<string, Record<string, PersistedEntryTimes>>;
@@ -95,23 +102,12 @@ function fallbackTimesFromCreatedAt(entry: RedmineTimeEntry): { startedAt: strin
   };
 }
 
-function resolveEntryTimes(domainUrl: string, entry: RedmineTimeEntry): { startedAt: string; stoppedAt: string } {
-  const persisted = getPersistedTimesForEntry(domainUrl, entry.id);
-  if (persisted) {
-    return {
-      startedAt: persisted.startedAt,
-      stoppedAt: persisted.stoppedAt,
-    };
-  }
-
-  return fallbackTimesFromCreatedAt(entry);
-}
-
 function persistEntryTimesForDomain(
   domainUrl: string,
   entryId: number,
   startedAt: string,
-  stoppedAt: string
+  stoppedAt: string,
+  metadata?: PersistEntryMetadata
 ): void {
   if (!isValidTimeHHMM(startedAt) || !isValidTimeHHMM(stoppedAt)) return;
 
@@ -124,6 +120,8 @@ function persistEntryTimesForDomain(
       startedAt,
       stoppedAt,
       updatedAt: new Date().toISOString(),
+      ...(metadata?.issue ? { issue: metadata.issue } : {}),
+      ...(metadata?.loggedIssue ? { loggedIssue: metadata.loggedIssue } : {}),
     },
   };
 
@@ -133,10 +131,11 @@ function persistEntryTimesForDomain(
 export async function persistEntryTimesForCurrentDomain(
   entryId: number,
   startedAt: string,
-  stoppedAt: string
+  stoppedAt: string,
+  metadata?: PersistEntryMetadata
 ): Promise<void> {
   const { url } = await getCredentials();
-  persistEntryTimesForDomain(url, entryId, startedAt, stoppedAt);
+  persistEntryTimesForDomain(url, entryId, startedAt, stoppedAt, metadata);
 }
 
 function normalizeSearchText(value: string): string {
@@ -768,11 +767,16 @@ export async function fetchTimeEntriesForDateRange(from: string, to: string): Pr
   return allTimeEntries
     .filter((entry) => issueMap.has(entry.issue.id))
     .map((entry) => {
-      const { startedAt, stoppedAt } = resolveEntryTimes(url, entry);
+      const persisted = getPersistedTimesForEntry(url, entry.id);
+      const { startedAt, stoppedAt } = persisted ?? fallbackTimesFromCreatedAt(entry);
+      const loggedIssue = issueMap.get(entry.issue.id)!;
+      const selectedIssue = persisted?.issue ?? loggedIssue;
+      const persistedLoggedIssue = persisted?.loggedIssue ?? loggedIssue;
 
       return {
         id: `redmine-${entry.id}`,
-        issue: issueMap.get(entry.issue.id)!,
+        issue: selectedIssue,
+        loggedIssue: persistedLoggedIssue,
         hours: entry.hours,
         activityId: entry.activity.id,
         comments: entry.comments || "",
@@ -824,11 +828,16 @@ export async function fetchRecentTimeEntries(
   const sessions = data.time_entries
     .filter((entry) => issueMap.has(entry.issue.id))
     .map((entry) => {
-      const { startedAt, stoppedAt } = resolveEntryTimes(url, entry);
+      const persisted = getPersistedTimesForEntry(url, entry.id);
+      const { startedAt, stoppedAt } = persisted ?? fallbackTimesFromCreatedAt(entry);
+      const loggedIssue = issueMap.get(entry.issue.id)!;
+      const selectedIssue = persisted?.issue ?? loggedIssue;
+      const persistedLoggedIssue = persisted?.loggedIssue ?? loggedIssue;
 
       return {
         id: `redmine-${entry.id}`,
-        issue: issueMap.get(entry.issue.id)!,
+        issue: selectedIssue,
+        loggedIssue: persistedLoggedIssue,
         hours: entry.hours,
         activityId: entry.activity.id,
         comments: entry.comments || "",

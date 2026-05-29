@@ -1384,7 +1384,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             setManualModalOpen(false);
             setManualIssue(null);
           }}
-          onSaved={(issue, _entryId, _hours, _activityId, _comments, spentOn) => {
+          onSaved={(issue, _loggedIssue, _entryId, _hours, _activityId, _comments, spentOn) => {
             setManualModalOpen(false);
             setManualIssue(issue);
             setSelectedDayKey(spentOn);

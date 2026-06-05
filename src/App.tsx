@@ -37,6 +37,7 @@ function App() {
   const updateChannel = useSettingsStore((s) => s.settings.update_channel);
   const language = useSettingsStore((s) => s.settings.language);
   const theme = useSettingsStore((s) => s.settings.theme);
+  const onboardingSeen = useSettingsStore((s) => s.settings.onboarding_seen);
   const redmineUrl = useSettingsStore((s) => s.settings.redmine_url);
   const apiKey = useSettingsStore((s) => s.settings.api_key);
   const syncActivities = useSettingsStore((s) => s.syncActivities);
@@ -66,14 +67,10 @@ function App() {
   useEffect(() => {
     if (!settingsLoaded || !credentialsLoaded) return;
 
-    const noRedmineDomain = redmineUrl.trim().length === 0;
-    const noApiKey = apiKey.trim().length === 0;
-    const shouldOpenOnboarding = noRedmineDomain || noApiKey;
-
-    if (shouldOpenOnboarding) {
+    if (!onboardingSeen) {
       setOnboardingOpen(true);
     }
-  }, [apiKey, credentialsLoaded, redmineUrl, settingsLoaded]);
+  }, [credentialsLoaded, onboardingSeen, settingsLoaded]);
 
   useEffect(() => {
     if (!settingsLoaded || systemLanguageSyncRef.current) return;

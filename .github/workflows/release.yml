@@ -53,11 +53,12 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Clepsydre ${{ contains(github.ref_name, '-beta.') && 'Beta' || 'Stable' }} ${{ github.ref_name }}"
+          releaseName: "Clepsydre ${{ contains(github.ref_name, '-beta.') && 'Beta' || '' }} ${{ github.ref_name }}"
           releaseBody: "See the assets below to download and install this version."
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
           args: ${{ matrix.platform == 'windows-latest' && contains(github.ref_name, '-') && '--bundles nsis' || matrix.args }}
+          uploadUpdaterSignatures: false
 
   package-extensions:
     name: Package browser extensions
@@ -243,50 +244,3 @@ jobs:
           cat /tmp/firefox-submit.json
           exit 1
 
-  publish-beta-pointer:
-    name: Publish latest-beta pointer
-    if: contains(github.ref_name, '-beta.')
-    needs: [build, package-extensions]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release updater manifest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p /tmp/clepsydre-beta
-          gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" --pattern "latest.json" --dir /tmp/clepsydre-beta
-
-      - name: Create or update latest-beta release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh release view latest-beta --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload latest-beta /tmp/clepsydre-beta/latest.json --repo "${{ github.repository }}" --clobber
-            gh release edit latest-beta --repo "${{ github.repository }}" --title "Latest Beta Channel" --notes "Automatically updated from ${{ github.ref_name }}" --prerelease
-          else
-            gh release create latest-beta /tmp/clepsydre-beta/latest.json --repo "${{ github.repository }}" --title "Latest Beta Channel" --notes "Automatically updated from ${{ github.ref_name }}" --prerelease
-          fi
-
-  publish-stable-pointer:
-    name: Publish latest-stable pointer
-    if: ${{ !contains(github.ref_name, '-') }}
-    needs: [build, package-extensions]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download release updater manifest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p /tmp/clepsydre-stable
-          gh release download "${{ github.ref_name }}" --repo "${{ github.repository }}" --pattern "latest.json" --dir /tmp/clepsydre-stable
-
-      - name: Create or update latest-stable release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if gh release view latest-stable --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            gh release upload latest-stable /tmp/clepsydre-stable/latest.json --repo "${{ github.repository }}" --clobber
-            gh release edit latest-stable --repo "${{ github.repository }}" --title "Latest Stable Channel" --notes "Automatically updated from ${{ github.ref_name }}"
-          else
-            gh release create latest-stable /tmp/clepsydre-stable/latest.json --repo "${{ github.repository }}" --title "Latest Stable Channel" --notes "Automatically updated from ${{ github.ref_name }}"
-          fi

@@ -1,13 +1,6 @@
 # Clepsydre
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./src/assets/clepsydre-white-logo.svg">
-    <img src="./website/public/images/clepsydre-logo.svg" alt="Clepsydre logo" width="220">
-  </picture>
-</p>
-
-<p align="center">
   Redmine time tracking, without friction.<br/>
   A desktop app built for teams who want accurate logs, faster input, and better visibility.
 </p>

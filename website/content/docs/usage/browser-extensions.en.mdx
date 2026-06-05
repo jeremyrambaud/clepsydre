@@ -1,0 +1,54 @@
+---
+title: Browser extensions
+description: Start the Clepsydre timer directly from a Redmine issue page.
+---
+
+The **Chrome** and **Firefox** extensions add a small widget directly on your Redmine issue pages, so you can control the Clepsydre timer without leaving your browser.
+
+<Callout type="info">
+No configuration is required for the extensions: they automatically connect to the Clepsydre desktop app when it is running. You only need the app running and your Redmine URL set in its settings.
+</Callout>
+
+## Installation
+
+1. First install the Clepsydre desktop app (see [Download & Installation](/en/docs/download)).
+2. Install the extension for your browser:
+   - [Chrome extension](https://chromewebstore.google.com/detail/clepsydre-companion-%E2%80%94-red/ilojdkpijdgehbjjhlbljekgeoomijhp)
+   - [Firefox extension](https://addons.mozilla.org/fr/firefox/addon/clepsydre-companion/)
+3. Open a Redmine issue page: the widget appears next to the issue title.
+
+<div align="center">![Extension widget](/images/extension-widget.png)</div>
+
+## How it works
+
+The extension communicates with the desktop app through a local bridge (on your machine only). The widget automatically syncs with the timer state:
+
+- it **detects the issue number** from the page URL;
+- it only appears on the **Redmine configured** in the app;
+- it **updates** automatically (regular state refresh);
+- the language (French / English) follows the page's language.
+
+## Widget buttons
+
+| Element | Purpose |
+|---------|---------|
+| **Start** | Starts the Clepsydre timer on the page's issue. |
+| **Start and choose billing issue** (play + gear) | Starts the timer and opens the selection of a different logging ticket. |
+| **Stop** | Stops the running timer (visible when the timer runs on this issue). |
+| **Status dot** | Shows the state: idle, running, or timer active on another issue. |
+| **Counter** | Shows the live elapsed time when the timer runs on this issue. |
+
+<div align="center">![Extension states - Idle](/images/extension-states-off.png)</div>
+<div align="center">![Extension states - Running](/images/extension-states-on.png)</div>
+<div align="center">![Extension states - Running on another issue](/images/extension-states-on-other.png)</div>
+
+## Possible states
+
+- **Idle** — no timer running; click Start to begin tracking.
+- **Running on this issue** — the counter ticks and the button becomes **Stop**.
+- **Running on another issue** — the widget shows a link to the actually tracked issue.
+- **App unavailable** — if the desktop app is not running, the widget prompts you to start it (**"Launch Clepsydre desktop app to start tracking time"**).
+
+<Callout type="warn">
+The Clepsydre desktop app must be **running** for the widget to work. If it is closed, the buttons stay disabled until it starts.
+</Callout>

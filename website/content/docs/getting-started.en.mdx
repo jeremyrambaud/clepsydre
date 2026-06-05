@@ -1,0 +1,64 @@
+---
+title: Getting Started
+description: Install Clepsydre and complete the setup wizard on first launch.
+icon: Rocket
+---
+
+Getting Clepsydre up and running takes two steps: **install the app**, then **follow the setup wizard** shown on the very first launch. A few minutes is enough to be ready to track your time.
+
+## 1. Install the app
+
+Download and install the desktop app for your system (Windows, macOS, or Linux).
+
+The full procedure, package by package, is described on the dedicated page:
+
+<Cards>
+  <Card title="Download & Installation" href="/en/docs/download" icon="Download" />
+</Cards>
+
+## 2. Complete the onboarding
+
+On the **first launch**, Clepsydre shows the **"Welcome to Clepsydre"** wizard, in 3 steps. You can't skip it until the Redmine connection is valid.
+
+### Step 1 — Basic configuration
+
+Fill in the Redmine connection and your main preferences:
+
+- **Redmine URL** *(required)* — your instance address, for example `https://redmine.example.com`.
+- **API key** *(required)* — your Redmine authentication key. You'll find it in Redmine, under **My account > API access key**. It is stored securely in your system keychain (never in plain text).
+- **Language** — French or English (prefilled from your system).
+- **Theme** — system, dark, or light.
+- **Launch at startup** — open Clepsydre automatically when you log in.
+- **Minimize to tray** — minimize the app to the notification area instead of closing it.
+
+<Callout type="info">
+When you validate this step, Clepsydre **tests the connection** to Redmine and syncs your activities. If the URL or key is incorrect, an error message appears and you stay on step 1.
+</Callout>
+
+### Step 2 — Tracking preferences
+
+These defaults speed up time logging. They are all optional and can be changed later.
+
+- **Default activity** — the Redmine activity preselected on each time entry (the list comes from the activities synced in step 1).
+- **Default comment** — text prefilled in the comment field of a new entry.
+- **Daily work target** — your daily goal in hours (1 to 24, in 0.5h steps), used by the calendar and statistics.
+
+### Step 3 — Browser extensions *(optional)*
+
+The companion extensions let you start a timer directly from a Redmine issue page. No configuration is required.
+
+<Cards>
+  <Card title="Chrome extension" href="https://chromewebstore.google.com/detail/clepsydre-companion-%E2%80%94-red/ilojdkpijdgehbjjhlbljekgeoomijhp" icon="Puzzle" />
+  <Card title="Firefox extension" href="https://addons.mozilla.org/fr/firefox/addon/clepsydre-companion/" icon="Puzzle" />
+</Cards>
+
+Click **Finish** to save your configuration and enter the app.
+
+## 3. What's next?
+
+- For the details of **all settings** (including those not in the onboarding), see the [Configuration](/en/docs/configuration) page.
+- To start your first tracking session, see [Using the timer](/en/docs/utilisation/timer-actions).
+
+<Callout type="info">
+All onboarding settings can be changed at any time from the app's **Settings** page.
+</Callout>

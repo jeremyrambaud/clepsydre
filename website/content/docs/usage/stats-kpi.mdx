@@ -1,0 +1,42 @@
+---
+title: Indicateurs clés (KPI)
+description: Comprendre les trois indicateurs en haut de l'écran Statistiques.
+---
+
+L'écran **Statistiques** s'ouvre sur trois indicateurs clés (KPI) qui résument votre activité. Ils se basent sur le **jour sélectionné** dans le calendrier et sur le **mois affiché**.
+
+<div align="center">![Cartes KPI](/images/stats-kpi-cards.png)</div>
+
+## Heures de la semaine
+
+Total du temps imputé sur la **semaine** contenant le jour sélectionné (du lundi au dimanche).
+
+- Le sous-texte affiche l'écart par rapport à la semaine précédente, par exemple **« -6h 53m vs semaine dernière »**.
+- L'écart apparaît en vert s'il est positif ou nul, en rouge s'il est négatif.
+
+## Projet le plus actif
+
+Le **projet** sur lequel vous avez passé le plus de temps cette semaine.
+
+- Le sous-texte indique la durée et la part de la semaine, par exemple **«22h31 · 80 % de la semaine »**.
+- Si aucune donnée n'est disponible, l'indicateur affiche **« Aucune donnée disponible »**.
+
+## Complétion mensuelle
+
+Compare le temps **réellement travaillé** au temps **attendu** sur les jours ouvrés du mois affiché, jusqu'à aujourd'hui (ou sur le mois entier si le mois est passé).
+
+- Les **week-ends** et **jours fériés** (français) sont exclus par défaut ; les jours personnalisés dans le calendrier sont pris en compte.
+- Le temps attendu par jour ouvré correspond à l'**objectif de travail journalier** défini dans les paramètres (7h par défaut).
+
+Selon la situation, l'indicateur affiche :
+
+| État | Affichage |
+|------|-----------|
+| Mois futur | `--` + « Le mois n'a pas encore commencé » |
+| Aucun jour ouvré | `--` + « Aucun jour ouvré à évaluer » |
+| Objectif atteint | « À jour » (avec éventuel dépassement) |
+| En retard | Durée manquante (en rouge) + précision « hors week-ends et jours fériés » |
+
+<Callout type="info">
+La complétion mensuelle dépend directement de vos réglages **Objectif de travail journalier** et de la personnalisation des jours ouvrés dans le [calendrier](/docs/utilisation/stats-calendar).
+</Callout>

@@ -1,0 +1,59 @@
+---
+title: Calendrier d'activité
+description: Naviguer dans le calendrier, lire les couleurs et personnaliser les jours ouvrés.
+---
+
+Le **Calendrier d'activité** affiche votre temps imputé jour par jour sur le mois. C'est aussi le point d'entrée pour sélectionner un jour (qui alimente les autres sections) et personnaliser vos jours ouvrés.
+
+<div align="center">![Calendrier d'activité](/images/stats-calendar.png)</div>
+
+## Navigation et sélection
+
+- Les boutons **Mois précédent** / **Mois suivant** changent le mois affiché.
+- **Clic gauche** sur un jour : le sélectionne. Ce jour alimente les indicateurs, l'activité hebdomadaire et la timeline de la journée.
+- Cliquer sur un jour appartenant à un autre mois bascule le calendrier sur ce mois.
+- La **semaine** du jour sélectionné est mise en évidence.
+
+Au changement de mois, le calendrier sélectionne automatiquement le jour le plus pertinent (aujourd'hui s'il est visible, sinon le premier jour avec des entrées, sinon le 1er du mois).
+
+## Contenu d'une case
+
+Chaque jour affiche le numéro du jour et, le cas échéant :
+
+- le **temps imputé** au format `HH:MM` quand il est supérieur à 0 ;
+- le nom du **jour férié** (en français) avec une infobulle.
+
+## Code couleur (objectif journalier)
+
+Sur les jours ouvrés, la couleur reflète l'atteinte de votre objectif :
+
+- **Objectif atteint** — temps compris dans la plage `objectif ± tolérance` ;
+- **Objectif dépassé** — au-dessus de l'objectif + tolérance ;
+- **Incomplet** — en dessous du minimum.
+
+Une ligne de légende rappelle l'objectif courant, par exemple **« Objectif : 7h00 ± 60 min »**, configurable dans les [paramètres](/docs/configuration).
+
+## Types de jours
+
+Le calendrier distingue visuellement les **week-ends**, les **jours fériés**, et les jours forcés en **jour travaillé** ou **jour non-travaillé** par vos personnalisations.
+
+## Actions au clic droit
+
+Un **clic droit** sur un jour ouvre un menu contextuel pour ajuster son statut.
+
+<div align="center">![Menu contextuel du calendrier](/images/stats-calendar-context-menu.png)</div>
+
+
+L'en-tête du menu rappelle la date complète et le **statut du jour** (« Jour travaillé » ou « Jour non-travaillé »). Trois actions sont disponibles :
+
+| Action | Effet |
+|--------|-------|
+| **Marquer comme travaillé** | Force un jour (week-end, etc.) à compter comme jour ouvré. |
+| **Marquer comme non-travaillé** | Exclut un jour normalement ouvré (congé, férié, etc.). |
+| **Réinitialiser le statut** | Revient à la règle automatique (désactivé s'il n'y a pas de personnalisation). |
+
+Le menu se ferme par un clic à l'extérieur, la touche Échap, un redimensionnement ou un défilement.
+
+<Callout type="info">
+Ces personnalisations sont enregistrées localement, persistent entre les sessions, et influencent à la fois les couleurs du calendrier et l'indicateur **Complétion mensuelle**.
+</Callout>

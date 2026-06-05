@@ -1,0 +1,74 @@
+---
+title: Utiliser le timer
+description: Démarrer, mettre en pause, reprendre, arrêter et réinitialiser le timer.
+---
+
+Le timer est la zone centrale de l'écran **Timer**. Une fois un ticket sélectionné, vous pilotez votre suivi du temps avec quelques contrôles simples.
+
+![Actions du timer](/images/timer-controls.png)
+
+## Sélectionner un ticket
+
+Avant de démarrer, sélectionnez le ticket sur lequel vous travaillez :
+
+1. Utilisez la barre de recherche (*Rechercher des tickets par ID, projet ou titre…*).
+2. Cliquez sur un résultat pour en faire le **ticket actif**.
+
+Tant qu'aucun ticket n'est sélectionné, l'application affiche **« Sélectionnez un ticket pour commencer le suivi »**.
+
+<Callout type="info">
+Si l'option **Démarrer le timer à la sélection d'un ticket** est activée dans les paramètres, le timer démarre (ou reprend) automatiquement dès que vous sélectionnez un ticket.
+</Callout>
+
+## Les actions du timer
+
+| Action | Description |
+|--------|-------------|
+| **Démarrer** | Lance le suivi à partir de maintenant. Disponible quand le timer est à l'arrêt. |
+| **Pause** | Met le décompte en pause sans perdre le temps déjà écoulé. |
+| **Reprendre** | Reprend le décompte après une pause. |
+| **Arrêter** | Arrête le timer et déclenche l'**imputation** du temps (voir ci-dessous). |
+| **Réinitialiser** | Annule la session en cours **sans enregistrer** de temps. |
+
+### Ajuster l'heure de début
+
+Lorsque le timer tourne, un champ d'heure permet d'**ajuster l'heure de début** si vous avez démarré le suivi avec un peu de retard. Seules les heures passées sont acceptées (vous ne pouvez pas démarrer dans le futur).
+
+### Réinitialiser
+
+Le bouton corbeille ouvre une confirmation **« Réinitialiser ce timer ? »** avec **Confirmer** / **Annuler**. La réinitialisation supprime le temps écoulé sans rien imputer sur Redmine.
+
+## Arrêter et imputer
+
+Le bouton **Arrêter** ne se contente pas de stopper le décompte : il lance le processus d'imputation.
+
+- Si le **mode express** est activé, le temps est enregistré automatiquement sur Redmine, sans confirmation.
+- Sinon, une fenêtre **« Imputer un temps »** s'ouvre pour vérifier et valider l'entrée.
+
+Le détail de ce processus est décrit dans [Imputer du temps sur un ticket](/docs/utilisation/timer-log-ticket).
+
+<Callout type="warn">
+Arrêter le timer avec **0 minute écoulée** (ou sans ticket) stoppe simplement le suivi : aucune fenêtre ne s'ouvre et aucun temps n'est enregistré.
+</Callout>
+
+## Détection d'inactivité
+
+Si la **détection d'inactivité** est activée et que vous restez inactif au-delà du seuil configuré pendant que le timer tourne, Clepsydre affiche une fenêtre **« Inactivité détectée »** à votre retour, avec trois choix :
+
+- **Continuer sans modification** — conserve tout le temps écoulé.
+- **Soustraire le temps d'inactivité et arrêter** — retire la durée d'inactivité puis arrête le timer.
+- **Soustraire et continuer** — retire la durée d'inactivité et poursuit le suivi.
+
+<div align="center">![Dialogue d'inactivité](/images/timer-idle-dialog.png)</div>
+
+## Mini-widget dans la barre latérale
+
+Quand le timer tourne et que vous naviguez sur un autre écran (Statistiques, Historique…), un mini-widget apparaît dans la barre latérale avec les boutons **Pause / Reprendre** et **Arrêter**.
+
+<Callout type="warn">
+Le bouton **Arrêter** du mini-widget arrête le timer **sans ouvrir la fenêtre d'imputation**. Pour imputer votre temps, utilisez le bouton Arrêter de l'écran Timer.
+</Callout>
+
+## Persistance
+
+Un timer en cours (ou en pause) est conservé même si vous fermez puis rouvrez l'application : il sera restauré au prochain démarrage.

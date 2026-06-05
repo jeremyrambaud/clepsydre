@@ -1,0 +1,48 @@
+---
+title: Imputer sur un ticket séparé
+description: Suivre un ticket tout en imputant le temps sur un autre ticket.
+---
+
+Il arrive de travailler sur un ticket précis tout en devant imputer le temps sur un **autre ticket** (ticket de facturation, ticket parent, ticket d'équipe…). Clepsydre permet de dissocier le **ticket suivi** du **ticket d'imputation**.
+
+## Le panneau « Imputer sur »
+
+Sur le ticket actif, le panneau **« Imputer sur »** permet de choisir un ticket d'imputation différent.
+
+1. Sélectionnez d'abord normalement le ticket sur lequel vous travaillez (ticket actif).
+2. Dans **Imputer sur**, cliquez sur l'icône d'édition pour ouvrir **« Choisir le ticket d'imputation »**.
+3. Recherchez et sélectionnez le ticket de destination.
+
+Le timer **reste sur le ticket actif**, mais le temps sera enregistré sur le ticket choisi.
+
+<div align="center">![Imputer sur un ticket séparé](/images/timer-log-on-panel.png)</div>
+
+<Callout type="info">
+Pour revenir à un fonctionnement classique, cliquez sur **Utiliser le ticket actif** : l'imputation se fera de nouveau sur le ticket suivi.
+</Callout>
+
+## Le commentaire est complété automatiquement
+
+C'est le point clé de cette fonctionnalité. Lorsque le ticket d'imputation diffère du ticket suivi, Clepsydre **préfixe automatiquement le commentaire** avec une première ligne rappelant le ticket réellement travaillé :
+
+```
+#1234 - Intitulé du ticket en cours
+```
+
+Ainsi, même si le temps est imputé ailleurs, la trace du ticket d'origine reste visible dans le commentaire de l'entrée de temps. Ce préfixe est géré automatiquement :
+
+- il est **ajouté** quand vous imputez sur un ticket différent ;
+- il est **mis à jour** si vous changez de ticket suivi ;
+- il est **masqué** dans l'interface de la timeline et de l'historique pour rester lisible.
+
+<div align="center">![Commentaire contextuel](/images/timer-context-comment.png)</div>
+
+## Affichage dans la timeline
+
+Dans la [timeline](/docs/utilisation/timer-timeline), une entrée imputée sur un autre ticket affiche une mention du type **« Imputé sur #ID · Ticket »**, ce qui permet de repérer d'un coup d'œil les imputations croisées.
+
+<div align="center">![Timeline avec commentaire contextuel](/images/timer-context-timeline.png)</div>
+
+## Mémorisation
+
+Lorsque vous re-sélectionnez un ticket déjà suivi auparavant, Clepsydre **restaure le dernier ticket d'imputation** utilisé pour ce ticket, d'après l'historique de la timeline. Vous n'avez donc pas à reconfigurer l'imputation à chaque fois.

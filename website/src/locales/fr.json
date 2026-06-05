@@ -1,0 +1,178 @@
+{
+  "fumadocs": {
+    "displayName": "Français",
+    "search": "Rechercher dans la documentation",
+    "chooseLanguage": "Choisir la langue",
+    "nextPage": "Page suivante",
+    "previousPage": "Page précédente",
+    "editOnGithub": "Modifier sur GitHub",
+    "notFoundTitle": "Page introuvable",
+    "notFoundDescription": "Cette page est introuvable.",
+    "notFoundLink": "Retour à l'accueil"
+  },
+  "meta": {
+    "title": "Application de suivi du temps Redmine",
+    "description": "Application pour le suivi de temps Redmine, la saisie d'imputations et l'analyse de charge."
+  },
+  "layout": {
+    "features": "Fonctionnalités",
+    "docs": "Documentation",
+    "download": "Téléchargement"
+  },
+  "landing": {
+    "nav": {
+      "why": "Pourquoi",
+      "features": "Fonctionnalités",
+      "docs": "Documentation",
+      "download": "Télécharger"
+    },
+    "hero": {
+      "pill": "Le meilleur moyen de suivre votre temps passé",
+      "titleBefore": "Pilotez votre temps Redmine avec ",
+      "titleHighlight": "précision",
+      "titleAfter": ", sans friction.",
+      "description": "Suivez votre temps Redmine avec précision, simplicité et zéro friction. Fini les oublis de saisie et les approximations.",
+      "docsButton": "Voir la documentation",
+      "badges": [
+        "macOS, Windows & Linux",
+        "Compatible Redmine 4.x / 5.x",
+        "Gestion du temps avancée",
+        "Aucun plugin Redmine requis"
+      ]
+    },
+    "meta": {
+      "title": "Suivi du temps Redmine",
+      "description": "Application pour le suivi de temps Redmine, la saisie d'imputations et l'analyse de charge."
+    },
+    "sections": {
+      "whyTitle": "Pourquoi choisir Clepsydre ?",
+      "whyDescription": "Une expérience desktop pensée pour les équipes qui utilisent Redmine au quotidien et veulent fiabiliser leur suivi temps.",
+      "featuresTitle": "Fonctionnalités avancées",
+      "featuresDescription": "Tout ce qu'il faut pour accélérer la saisie, améliorer la fiabilité des imputations et analyser la charge.",
+      "ctaTitle": "Prêt à reprendre le contrôle ?",
+      "ctaDescription": "Téléchargez Clepsydre pour votre OS, activez l'intégration Redmine et démarrez un suivi temps net en quelques minutes.",
+      "allDownloads": "Voir tous les assets de release"
+    },
+    "platform": {
+      "windows": "Télécharger pour Windows (x64)",
+      "macos": "Télécharger pour macOS (Apple Silicon)",
+      "linux": "Télécharger AppImage pour Linux",
+      "unknown": "Voir la page de téléchargement",
+      "windowsCard": "Windows",
+      "macosCard": "MacOS",
+      "linuxCard": "Linux"
+    },
+    "links": {
+      "docs": "Documentation",
+      "downloads": "Downloads",
+      "allReleases": "Toutes les releases",
+      "chrome": "Extension Chrome",
+      "firefox": "Extension Firefox"
+    },
+    "footer": {
+      "product": "Produit",
+      "resources": "Ressources",
+      "extensions": "Extensions",
+      "why": "Pourquoi",
+      "features": "Fonctionnalités",
+      "download": "Téléchargement",
+      "docs": "Documentation",
+      "github": "GitHub",
+      "releases": "Releases",
+      "builtFor": "Le meilleur moyen de suivre votre temps passé.",
+      "chrome": "Chrome",
+      "firefox": "Firefox"
+    },
+    "whyCards": [
+      { "title": "Tout-en-un, sans Redmine", "description": "Gérez intégralement vos temps dans Clepsydre : saisie, édition, historique. Plus besoin d'ouvrir Redmine pour imputer." },
+      { "title": "Saisie au plus juste", "description": "Heures de début et de fin, détection d'inactivité, saisie manuelle : chaque minute est comptabilisée avec exactitude." },
+      { "title": "Zéro oubli de saisie", "description": "Vues journalière, hebdomadaire et timeline : repérez instantanément les trous et complétez avant qu'il ne soit trop tard." },
+      { "title": "Contrôle total", "description": "Statistiques jour, semaine et mois, historique filtrable et requêtable : gardez une vision claire de votre charge réelle." }
+    ],
+    "featureItems": [
+      { "title": "Timer complet", "description": "Start, pause, stop et reset en un clic. Chronométrez vos tâches sans effort." },
+      { "title": "Détection d'inactivité", "description": "L'app détecte automatiquement vos pauses et vous propose d'ajuster le temps enregistré." },
+      { "title": "Saisie manuelle", "description": "Renseignez directement heures de début, fin et durée pour les tâches passées ou planifiées." },
+      { "title": "Commentaires intégrés", "description": "Ajoutez une description à chaque imputation au moment de la saisie pour un suivi contextualisé." },
+      { "title": "Imputation flexible", "description": "Imputez sur un ticket différent du ticket actif, sans quitter votre contexte de travail." },
+      { "title": "Recherche de tickets", "description": "Trouvez n'importe quel ticket instantanément par ID, projet ou intitulé." },
+      { "title": "Identifiants sécurisés", "description": "Vos identifiants Redmine sont stockés dans le trousseau sécurisé de votre OS, jamais en clair." },
+      { "title": "Extensions navigateur", "description": "Lancez le timer directement depuis un ticket Redmine grâce aux extensions Chrome et Firefox." },
+      { "title": "Timeline visuelle", "description": "Visualisez votre activité de la journée en un coup d'œil sur une frise chronologique interactive." },
+      { "title": "Statistiques détaillées", "description": "Vues journalière, hebdomadaire et mensuelle pour piloter votre charge et repérer les écarts." },
+      { "title": "Historique avancé", "description": "Filtrez, triez et requêtez l'ensemble de vos temps passés pour retrouver n'importe quelle saisie." },
+      { "title": "Mode clair & sombre", "description": "Interface adaptée à vos préférences visuelles, de jour comme de nuit." }
+    ]
+  },
+  "download": {
+    "loading": "Chargement de la dernière version…",
+    "latestStable": "Dernière version stable",
+    "published": "Publié le",
+    "allReleases": "Toutes les releases",
+    "manifestError": "Impossible de charger les assets.",
+    "latestReleasePage": "Accéder à la page de release",
+    "whyUnsigned": "Clepsydre n'est pas encore signée numériquement. Chaque système d'exploitation affiche donc un avertissement de sécurité au premier lancement. Les étapes ci-dessous vous permettent de contourner cette restriction en toute sécurité.",
+    "whyUnsignedTitle": "Pourquoi ces étapes supplémentaires ?",
+    "tabsAriaLabel": "Onglets systèmes d'exploitation",
+
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+
+    "windowsExe": "Installateur (.exe)",
+    "windowsExeDesc": "Recommandé",
+    "windowsMsi": "Installateur (.msi)",
+    "windowsMsiDesc": "Alternatif",
+    "windowsSteps": [
+      "Téléchargez et lancez l'installateur .exe (ou .msi si votre environnement bloque le .exe).",
+      "Windows SmartScreen affiche un avertissement car l'application n'est pas signée.",
+      "Cliquez <strong>Informations complémentaires</strong> puis <strong>Exécuter quand même</strong>.",
+      "Terminez l'assistant et lancez Clepsydre depuis le menu Démarrer."
+    ],
+    "windowsTip": "Si le lancement reste bloqué, vérifiez <strong>Sécurité Windows → Contrôle des applications</strong> et autorisez Clepsydre.",
+
+    "macAppleSilicon": "Apple Silicon (.dmg)",
+    "macAppleSiliconDesc": "M1 / M2 / M3 / M4",
+    "macIntel": "Intel (.dmg)",
+    "macIntelDesc": "x86_64",
+    "macosSteps": [
+      "Téléchargez le DMG correspondant à votre processeur.",
+      "Ouvrez le .dmg et glissez <strong>Clepsydre.app</strong> dans <strong>Applications</strong>.",
+      "Ouvrez le Terminal et lancez la commande suivante pour retirer l'attribut de quarantaine :",
+      "Lancez Clepsydre normalement depuis le Launchpad ou Applications."
+    ],
+    "macosQuarantineCmd": "xattr -dr com.apple.quarantine \"/Applications/Clepsydre.app\"",
+    "macosKeychainTitle": "Accès au trousseau",
+    "macosKeychainDesc": "Au premier lancement, macOS peut demander votre mot de passe du trousseau. Clepsydre a besoin d'y accéder pour stocker votre clé d'API Redmine de façon sécurisée. Vous pouvez accepter en toute confiance.",
+
+    "linuxAppImage": "AppImage",
+    "linuxAppImageDesc": "Universel",
+    "linuxDeb": ".deb",
+    "linuxDebDesc": "Debian / Ubuntu",
+    "linuxRpm": ".rpm",
+    "linuxRpmDesc": "Fedora / RHEL",
+    "linuxIntro": "Choisissez le format adapté à votre distribution. L'AppImage fonctionne partout sans installation ; les packages .deb et .rpm s'intègrent nativement au gestionnaire de paquets.",
+    "linuxSteps": [
+      "Téléchargez le fichier correspondant à votre distribution depuis les liens ci-dessus.",
+      "Installez ou rendez exécutable le fichier téléchargé en suivant les commandes ci-dessous.",
+      "Lancez Clepsydre depuis votre lanceur d'applications ou depuis le terminal."
+    ],
+    "linuxAppImageTitle": "AppImage — Exécution directe",
+    "linuxAppImageInstructions": "Rendez le fichier exécutable puis lancez-le directement. Aucune installation requise.",
+    "linuxDebTitle": "Debian / Ubuntu — Installation via apt",
+    "linuxDebInstructions": "Installez le package .deb avec apt. Les dépendances seront résolues automatiquement.",
+    "linuxRpmTitle": "Fedora / RHEL / openSUSE — Installation via rpm",
+    "linuxRpmInstructions": "Installez le package RPM avec la commande rpm.",
+    "linuxWebkitNote": "Sur certaines distributions, l'installation de <strong>WebKitGTK</strong> peut être nécessaire. Si l'application ne se lance pas, installez-le via votre gestionnaire de paquets.",
+    "linuxWebkitCmdDebian": "sudo apt install libwebkit2gtk-4.1-0",
+    "linuxWebkitCmdFedora": "sudo dnf install webkit2gtk4.1",
+
+    "extensionsTitle": "Extensions navigateur",
+    "extensionsDescription": "Lancez le timer directement depuis un ticket Redmine dans votre navigateur. Les extensions fonctionnent immédiatement après installation, aucune configuration nécessaire.",
+    "extensionChrome": "Chrome Web Store",
+    "extensionChromeDesc": "Google Chrome",
+    "extensionFirefox": "Firefox Add-ons",
+    "extensionFirefoxDesc": "Mozilla Firefox",
+    "extensionsNoConfig": "Aucune configuration requise : installez l'extension et elle détecte automatiquement Clepsydre sur votre poste."
+  }
+}

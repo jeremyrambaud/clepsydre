@@ -1,0 +1,56 @@
+---
+title: Extensions navigateurs
+description: Démarrer le timer Clepsydre directement depuis une page de ticket Redmine.
+---
+
+Les extensions **Chrome** et **Firefox** ajoutent un petit widget directement sur vos pages de ticket Redmine, pour piloter le timer Clepsydre sans quitter votre navigateur.
+
+<Callout type="info">
+Aucune configuration n'est nécessaire pour les extensions : elles se connectent automatiquement à l'application desktop Clepsydre lorsque celle-ci est lancée. Il suffit que l'application tourne et que votre URL Redmine soit renseignée dans ses paramètres.
+</Callout>
+
+## Installation
+
+1. Installez d'abord l'application desktop Clepsydre (voir [Téléchargement et installation](/docs/download)).
+2. Installez l'extension pour votre navigateur :
+   - [Extension Chrome](https://chromewebstore.google.com/detail/clepsydre-companion-%E2%80%94-red/ilojdkpijdgehbjjhlbljekgeoomijhp)
+   - [Extension Firefox](https://addons.mozilla.org/fr/firefox/addon/clepsydre-companion/)
+3. Ouvrez une page de ticket Redmine : le widget apparaît à côté du titre du ticket.
+
+<div align="center">![Extension widget](/images/extension-widget.png)</div>
+
+## Comment ça fonctionne
+
+L'extension communique avec l'application desktop via un pont local (sur votre machine uniquement). Le widget se synchronise automatiquement avec l'état du timer :
+
+- il **détecte le numéro du ticket** depuis l'URL de la page ;
+- il n'apparaît que sur le **Redmine configuré** dans l'application ;
+- il **se met à jour** automatiquement (rafraîchissement régulier de l'état) ;
+- la langue (français / anglais) suit celle de la page.
+
+## Les boutons du widget
+
+| Élément | Rôle |
+|---------|------|
+| **Démarrer** (lecture) | Démarre le timer Clepsydre sur le ticket de la page. |
+| **Démarrer et choisir le ticket d'imputation** (lecture + engrenage) | Démarre le timer et ouvre la sélection d'un ticket d'imputation différent. |
+| **Arrêter** | Arrête le timer en cours (visible quand le timer tourne sur ce ticket). |
+| **Pastille de statut** | Indique l'état : inactif, en cours, ou timer actif sur un autre ticket. |
+| **Compteur** | Affiche le temps écoulé en direct quand le timer tourne sur ce ticket. |
+
+
+<div align="center">![Status de l'extension - Inactif](/images/extension-states-off.png)</div>
+<div align="center">![Status de l'extension - En cours](/images/extension-states-on.png)</div>
+<div align="center">![Status de l'extension - En cours sur un autre ticket](/images/extension-states-on-other.png)</div>
+
+
+## États possibles
+
+- **Inactif** — aucun timer en cours ; cliquez sur Démarrer pour lancer le suivi.
+- **En cours sur ce ticket** — le compteur défile et le bouton devient **Arrêter**.
+- **En cours sur un autre ticket** — le widget affiche un lien vers le ticket réellement suivi.
+- **Application indisponible** — si l'application desktop n'est pas lancée, le widget invite à la démarrer (**« Lancez l'application desktop Clepsydre pour démarrer le suivi du temps »**).
+
+<Callout type="warn">
+L'application desktop Clepsydre doit être **lancée** pour que le widget fonctionne. Si elle est fermée, les boutons sont désactivés jusqu'à son démarrage.
+</Callout>

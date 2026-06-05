@@ -1,0 +1,35 @@
+<svg width="1200" height="680" viewBox="0 0 1200 680" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="120" y1="60" x2="1080" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C1A34" />
+      <stop offset="1" stop-color="#0A1428" />
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#34D399" />
+      <stop offset="1" stop-color="#10B981" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="680" rx="18" fill="url(#bg)" />
+  <rect x="28" y="28" width="220" height="624" rx="14" fill="#0B213E" stroke="#1E3A5F" />
+  <rect x="278" y="28" width="894" height="624" rx="14" fill="#0B1C35" stroke="#1E3A5F" />
+  <rect x="302" y="54" width="844" height="42" rx="10" fill="#112947" />
+  <rect x="302" y="124" width="550" height="180" rx="12" fill="#10253F" stroke="#1F3C5F" />
+  <rect x="872" y="124" width="274" height="180" rx="12" fill="#10253F" stroke="#1F3C5F" />
+  <text x="900" y="210" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="56" font-weight="700">
+    01:15:17
+  </text>
+  <rect x="322" y="258" width="220" height="8" rx="4" fill="url(#bar)" />
+  <rect x="302" y="332" width="844" height="42" rx="10" fill="#10253F" />
+  <rect x="302" y="390" width="844" height="58" rx="10" fill="#0F2A45" stroke="#1E4B66" />
+  <rect x="302" y="460" width="844" height="58" rx="10" fill="#10253F" />
+  <rect x="302" y="530" width="844" height="58" rx="10" fill="#10253F" />
+  <text x="56" y="90" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">
+    CLEPSYDRE
+  </text>
+  <text x="56" y="116" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="12">
+    PLACEHOLDER PREVIEW
+  </text>
+  <text x="352" y="624" fill="#6EE7B7" font-family="Inter, Arial, sans-serif" font-size="14">
+    Add your app screenshot as /public/images/app-preview.png
+  </text>
+</svg>

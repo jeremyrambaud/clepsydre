@@ -1,0 +1,64 @@
+---
+title: Démarrage rapide
+description: Installer Clepsydre et compléter l'assistant de configuration au premier lancement.
+icon: Rocket
+---
+
+Mettre en route Clepsydre se fait en deux temps : **installer l'application**, puis **suivre l'assistant de configuration** affiché au tout premier lancement. Quelques minutes suffisent pour être prêt à suivre votre temps.
+
+## 1. Installer l'application
+
+Téléchargez et installez l'application desktop pour votre système (Windows, macOS ou Linux).
+
+La procédure complète, package par package, est décrite sur la page dédiée :
+
+<Cards>
+  <Card title="Téléchargement et installation" href="/docs/download" icon="Download" />
+</Cards>
+
+## 2. Compléter l'onboarding
+
+Au **premier lancement**, Clepsydre affiche l'assistant **« Bienvenue dans Clepsydre »**, en 3 étapes. Vous ne pouvez pas le passer tant que la connexion Redmine n'est pas valide.
+
+### Étape 1 — Configuration de base
+
+Renseignez la connexion à Redmine et vos préférences principales :
+
+- **URL Redmine** *(requis)* — l'adresse de votre instance, par exemple `https://redmine.example.com`.
+- **Clé API** *(requis)* — votre clé d'authentification Redmine. Vous la trouvez dans Redmine, dans **Mon compte > Clé d'accès API**. Elle est stockée de façon sécurisée dans le trousseau de votre système (jamais en clair).
+- **Langue** — français ou anglais (préremplie selon votre système).
+- **Thème** — système, sombre ou clair.
+- **Lancer au démarrage** — ouvrir Clepsydre automatiquement à l'ouverture de session.
+- **Réduire dans la barre système** — réduire l'application dans la zone de notification au lieu de la fermer.
+
+<Callout type="info">
+À la validation de cette étape, Clepsydre **teste la connexion** à Redmine et synchronise vos activités. Si l'URL ou la clé sont incorrectes, un message d'erreur s'affiche et vous restez à l'étape 1.
+</Callout>
+
+### Étape 2 — Préférences de suivi
+
+Ces valeurs par défaut accélèrent la saisie du temps. Elles sont toutes facultatives et modifiables plus tard.
+
+- **Activité par défaut** — l'activité Redmine présélectionnée à chaque imputation (la liste provient des activités synchronisées à l'étape 1).
+- **Commentaire par défaut** — texte prérempli dans le champ commentaire d'une nouvelle imputation.
+- **Objectif de travail journalier** — votre objectif quotidien en heures (1 à 24, par pas de 0,5 h), utilisé par le calendrier et les statistiques.
+
+### Étape 3 — Extensions navigateurs *(optionnel)*
+
+Les extensions compagnon permettent de démarrer un timer directement depuis une page de ticket Redmine. Aucune configuration n'est nécessaire.
+
+<Cards>
+  <Card title="Extension Chrome" href="https://chromewebstore.google.com/detail/clepsydre-companion-%E2%80%94-red/ilojdkpijdgehbjjhlbljekgeoomijhp" icon="Puzzle" />
+  <Card title="Extension Firefox" href="https://addons.mozilla.org/fr/firefox/addon/clepsydre-companion/" icon="Puzzle" />
+</Cards>
+
+Cliquez sur **Terminer** pour enregistrer votre configuration et accéder à l'application.
+
+## 3. Et ensuite ?
+
+- Pour le détail de **tous les paramètres** (et ceux qui ne sont pas dans l'onboarding), voyez la page [Configuration](/docs/configuration).
+- Pour démarrer votre premier suivi, voyez [Utiliser le timer](/docs/utilisation/timer-actions).
+
+<Callout type="info">
+Tous les réglages de l'onboarding restent modifiables à tout moment depuis la page **Paramètres** de l'application.
+</Callout>

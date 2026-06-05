@@ -1,0 +1,21 @@
+{
+  "title": "Usage",
+  "icon": "BookOpen",
+  "pages": [
+    "index",
+    "---Timer---",
+    "timer-actions",
+    "timer-log-ticket",
+    "timer-log-separate-ticket",
+    "timer-timeline",
+    "---Statistics---",
+    "stats-kpi",
+    "stats-calendar",
+    "stats-weekly-activity",
+    "stats-day-timeline",
+    "stats-tops",
+    "---More---",
+    "history",
+    "browser-extensions"
+  ]
+}

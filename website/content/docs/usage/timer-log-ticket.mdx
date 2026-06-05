@@ -1,0 +1,64 @@
+---
+title: Imputer du temps sur un ticket
+description: Enregistrer une entrée de temps sur Redmine, avec activité et commentaire.
+---
+
+Imputer du temps consiste à créer une **entrée de temps** sur Redmine pour le ticket actif. Cela se produit lorsque vous arrêtez le timer, ou manuellement à tout moment.
+
+## Le brouillon de commentaire
+
+Pendant que le timer tourne, vous pouvez préparer un **brouillon de commentaire** qui sera repris au moment de l'imputation.
+
+1. Cliquez sur **Brouillon de commentaire** (ou l'icône d'édition).
+2. Saisissez votre commentaire (*Ajouter un commentaire pour ce timer…*).
+3. Le commentaire est conservé jusqu'à l'imputation.
+
+<div align="center">![Brouillon de commentaire](/images/timer-draft-comment.png)</div>
+
+<Callout type="info">
+Si l'option **Préremplir le dernier commentaire** est activée, le brouillon est automatiquement rempli avec le dernier commentaire enregistré pour ce ticket.
+</Callout>
+
+## Imputer en arrêtant le timer
+
+Quand vous cliquez sur **Arrêter**, le comportement dépend du **mode express** :
+
+### Mode express désactivé (par défaut)
+
+Une fenêtre **« Imputer un temps »** s'ouvre, préremplie avec :
+
+- le **ticket** concerné ;
+- la **date**, l'**heure de début** et l'**heure de fin** ;
+- la **durée** calculée ;
+- l'**activité** (l'activité par défaut si elle est définie) ;
+- le **commentaire** (votre brouillon).
+
+Vérifiez les informations, ajustez si besoin, puis cliquez sur **Imputer le temps**. Pour annuler sans enregistrer, utilisez **Abandonner le temps**.
+
+<div align="center">![Fenêtre d'imputation](/images/timer-log-modal.png)</div>
+
+<Callout type="info">
+La fenêtre d'imputation ne peut pas être fermée avec la touche Échap ou en cliquant à l'extérieur : choisissez explicitement **Imputer le temps** ou **Abandonner le temps**.
+</Callout>
+
+### Mode express activé
+
+Le temps est enregistré **automatiquement** sur Redmine, sans fenêtre de confirmation, en utilisant l'**activité par défaut** et le commentaire (brouillon, ou commentaire par défaut à défaut). Un message de succès s'affiche puis le timer est réinitialisé.
+
+<Callout type="warn">
+Le mode express nécessite qu'une **activité par défaut** soit définie dans les paramètres.
+</Callout>
+
+## Saisie manuelle
+
+Vous n'êtes pas obligé d'utiliser le chronomètre. Le bouton **Saisie manuelle** (bouton dans l'autocomplete, ou sous les contrôles du timer, ticket actif requis) ouvre directement la fenêtre d'imputation avec une durée de 0, que vous renseignez vous-même.
+
+C'est utile pour enregistrer une tâche passée ou planifiée sans avoir lancé le timer.
+
+## Après l'imputation
+
+Une fois le temps enregistré :
+
+- l'entrée apparaît dans la [timeline](/docs/utilisation/timer-timeline) du jour ;
+- le timer est réinitialisé (sauf cas particulier de poursuite) ;
+- les totaux (**Total Redmine**, **Total du jour**) sont mis à jour.

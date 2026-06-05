@@ -1,0 +1,48 @@
+---
+title: Configuration
+description: Découvrez chaque paramètre de configuration de Clepsydre et son rôle.
+icon: Settings
+---
+
+Clepsydre se configure depuis la page **Paramètres** de l'application, organisée en trois onglets : Connexion, Suivi du temps et Application. Certains réglages sont également proposés lors du premier lancement.
+
+## Connexion
+
+| Paramètre | Description | Par défaut |
+|-----------|-------------|------------|
+| **URL Redmine** | L'adresse de votre instance Redmine (ex. `https://redmine.example.com`). Toutes les synchronisations et les appels API utilisent cette URL. | |
+| **Clé API** | Votre clé d'authentification Redmine.<br /><br />Récupérable sur votre redmine dans **Mon compte > Clé d'accès API**.<br /><br />Elle est stockée de manière sécurisée dans le trousseau de votre système d'exploitation (Keychain macOS, Windows Credential Manager, libsecret Linux), jamais en clair. | |
+| **Intervalle de synchronisation** | Fréquence de synchronisation automatique des projets et tickets Redmine, en minutes (1 à 120). | **5 minutes** |
+
+## Suivi du temps
+
+### Préférences de saisie
+
+| Paramètre | Description | Par défaut |
+|-----------|-------------|------------|
+| **Mode express** | Lorsqu'il est activé, le temps est enregistré automatiquement à l'arrêt du timer, sans fenêtre de confirmation.<br />**Nécessite qu'une activité par défaut soit définie.** | Désactivé |
+| **Activité par défaut** | L'activité Redmine présélectionnée lors de la création d'une imputation (obligatoire pour le mode express). | Aucune |
+| **Commentaire par défaut** | Texte prérempli dans le champ commentaire de chaque nouvelle imputation. | Vide |
+| **Démarrer le timer à la sélection d'un ticket** | Le timer démarre automatiquement lorsque vous sélectionnez un ticket depuis la recherche, la timeline ou l'historique. | Activé |
+| **Préremplir le dernier commentaire** | Au démarrage du timer sur un ticket, le brouillon de commentaire est prérempli avec le dernier commentaire enregistré pour ce ticket. | Désactivé |
+| **Rechercher dans les commentaires** | Inclut les commentaires des imputations dans les résultats de recherche de tickets. Option expérimentale qui peut ralentir la recherche. | Désactivé |
+
+### Système
+
+| Paramètre | Description | Par défaut |
+|-----------|-------------|------------|
+| **Détection d'inactivité** | Quand le timer tourne et que vous êtes inactif au-delà du seuil configuré, Clepsydre vous propose d'ajuster le temps enregistré à la reprise d'activité. | Activé |
+| **Seuil d'inactivité** | Durée d'inactivité (en minutes) avant le déclenchement de l'alerte. Configurable de 1 à 60 minutes. | **15 minutes** |
+| **Objectif de travail journalier** | Objectif quotidien en heures, utilisé par les vues analytiques et le calendrier pour évaluer si la journée est complète. Configurable de 1 à 24h, par pas de 0.5h. | **7 heures** |
+| **Tolérance journalière** | Écart autorisé (en minutes) autour de l'objectif quotidien pour considérer une journée comme complète. Configurable de 0 à 180 minutes, par pas de 15 minutes. | **60 minutes** |
+| **Afficher les week-ends** | Affiche les colonnes samedi et dimanche dans le graphique d'activité hebdomadaire. | Activé |
+
+## Application
+
+| Paramètre | Description | Par défaut |
+|-----------|-------------|------------|
+| **Langue** | Langue de l'interface : français ou anglais. Détectée automatiquement au premier lancement depuis les préférences du navigateur/système. | Auto-détectée |
+| **Thème** | Apparence de l'application : clair, sombre ou système. | **Sombre** |
+| **Lancer au démarrage** | Démarre Clepsydre automatiquement à l'ouverture de session de votre système d'exploitation. | Activé |
+| **Réduire dans la barre système** | Lorsque vous fermez la fenêtre, l'application se réduit dans la barre système (system tray) au lieu de se fermer complètement. | Activé |
+| **Canal de mise à jour** | Choisissez entre le canal **stable** (versions validées) ou **bêta** (versions de test). Un bouton permet de vérifier et installer les mises à jour manuellement. | **Stable** |

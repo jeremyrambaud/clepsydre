@@ -1,0 +1,58 @@
+---
+title: Configuration
+description: Learn about every Clepsydre configuration parameter and what it does.
+icon: Settings
+---
+
+Clepsydre is configured from the **Settings** page inside the app, organized into three tabs: Connection, Time Tracking, and Application. Some settings are also presented during the first-launch onboarding.
+
+## Connection
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **Redmine URL** | The address of your Redmine instance (e.g. `https://redmine.example.com`). All syncs and API calls use this URL. | |
+| **API Key** | Your Redmine authentication key.<br /><br />Retrievable from your Redmine in **My account > API access key**.<br /><br />It is securely stored in your operating system's keychain (macOS Keychain, Windows Credential Manager, libsecret on Linux), never in plain text. | |
+| **Sync Interval** | How often Clepsydre automatically syncs Redmine projects and issues, in minutes (1 to 120). A button lets you trigger a manual sync. | **5 minutes** |
+
+## Time Tracking
+
+### Entry Preferences
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **Express Mode** | When enabled, time is logged automatically when the timer stops, without a confirmation dialog.<br />**Requires a default activity to be set.** | Off |
+| **Default Activity** | The Redmine activity preselected when creating a time entry (required for Express Mode). | None |
+| **Default Comment** | Text prefilled in the comment field of each new time entry. | Empty |
+| **Start timer on ticket selection** | The timer starts automatically when you select a ticket from search, timeline, or history. | On |
+| **Prefill last comment** | When starting the timer on a ticket, the comment draft is prefilled with the last logged comment for that ticket. | Off |
+| **Search in comments** | Include time-entry comments in ticket search results. Experimental option that may slow down search. | Off |
+
+### System
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **Idle Detection** | When the timer is running and you are idle beyond the configured threshold, Clepsydre prompts you to adjust the recorded time when activity resumes. | On |
+| **Idle Threshold** | Duration of inactivity (in minutes) before the idle prompt is triggered. Configurable from 1 to 60 minutes. | **15 minutes** |
+| **Daily Work Hours** | Daily target in hours, used by analytics views and the calendar to evaluate whether a day is complete. Configurable from 1 to 24h, in 0.5h increments. | **7 hours** |
+| **Daily Tolerance** | Allowed deviation (in minutes) around the daily target to count a day as complete. Configurable from 0 to 180 minutes, in 15-minute increments. | **60 minutes** |
+| **Show Weekends** | Display Saturday and Sunday columns in the weekly activity chart. | On |
+
+## Application
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| **Language** | Interface language: French or English. Auto-detected on first launch from browser/system preferences. | Auto-detected |
+| **Theme** | App appearance: light, dark, or system. | **Dark** |
+| **Launch at Startup** | Starts Clepsydre automatically when you log into your operating system. | On |
+| **Minimize to Tray** | When you close the window, the app minimizes to the system tray instead of quitting entirely. | On |
+| **Update Channel** | Choose between the **stable** channel (validated releases) or **beta** channel (test releases). A button lets you check for and install updates manually. | **Stable** |
+
+## Custom Workdays
+
+From the **Analytics** view, right-clicking a day on the calendar lets you:
+
+- **Mark as working day** — forces a normally non-working day (weekend, etc.) to count as a workday
+- **Mark as non-working day** — excludes a normally working day (holiday, time off, etc.)
+- **Reset day status** — reverts to the default behavior
+
+These customizations are stored locally and persist between sessions.

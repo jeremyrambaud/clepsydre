@@ -17,7 +17,7 @@ import { staticFunctionMiddleware } from '@tanstack/start-static-server-function
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { Suspense, useEffect } from 'react';
 import { useMDXComponents } from '@/components/mdx';
-import { defaultLocale, localizeDocsPath, normalizeLocale } from '@/lib/i18n';
+import { defaultLocale, localizeDocsPath, normalizeLocale, withBase } from '@/lib/i18n';
 
 export const Route = createFileRoute('/$lang/docs/$')({
   component: Page,
@@ -91,7 +91,7 @@ function Page() {
 
   useEffect(() => {
     if (locale === defaultLocale) {
-      window.location.replace(`${localizeDocsPath(defaultLocale, _splat ?? '')}${hash || ''}`);
+      window.location.replace(withBase(`${localizeDocsPath(defaultLocale, _splat ?? '')}${hash || ''}`));
     }
   }, [hash, locale, _splat]);
 

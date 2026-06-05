@@ -26,6 +26,21 @@ export function getLocaleLabel(locale: SiteLocale): string {
   return locale === 'fr' ? 'Français' : 'English';
 }
 
+const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+
+/**
+ * Prefixes a root-absolute path with the deployment base path (e.g. `/clepsydre`).
+ *
+ * Use this for plain `<a href>`, `<img src>`, favicon links and raw
+ * `window.location` navigations — anything that does NOT go through the
+ * TanStack router, which already applies the base path on its own.
+ */
+export function withBase(path = ''): string {
+  const suffix = path.startsWith('/') ? path : `/${path}`;
+  if (suffix === '/') return basePath ? `${basePath}/` : '/';
+  return `${basePath}${suffix}`;
+}
+
 export function localizePath(locale: SiteLocale, path = ''): string {
   const suffix = path.startsWith('/') ? path : `/${path}`;
   if (!suffix || suffix === '/') return locale === defaultLocale ? '/' : `/${locale}`;

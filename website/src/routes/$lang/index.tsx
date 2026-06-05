@@ -36,6 +36,7 @@ import {
   normalizeLocale,
   supportedLocales,
   type SiteLocale,
+  withBase,
 } from '@/lib/i18n';
 import { useTranslation } from 'react-i18next';
 import i18next from '@/lib/i18next';
@@ -102,7 +103,7 @@ function Home() {
 
   useEffect(() => {
     if (locale === defaultLocale) {
-      window.location.replace(localizePath(defaultLocale));
+      window.location.replace(withBase(localizePath(defaultLocale)));
     }
   }, [locale]);
 
@@ -115,7 +116,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
   const { t, i18n } = useTranslation();
   const [platform, setPlatform] = useState<SupportedPlatform>('unknown');
   const [previewSrc, setPreviewSrc] = useState(
-    import.meta.env.VITE_APP_PREVIEW_IMAGE || '/images/app-preview.png',
+    import.meta.env.VITE_APP_PREVIEW_IMAGE || withBase('images/app-preview.png'),
   );
 
   useEffect(() => {
@@ -176,12 +177,12 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
           <nav className="landing-nav-links">
             <a href="#why">{t('landing.nav.why')}</a>
             <a href="#features">{t('landing.nav.features')}</a>
-            <a href={localizeDocsPath(locale)}>{t('landing.nav.docs')}</a>
+            <a href={withBase(localizeDocsPath(locale))}>{t('landing.nav.docs')}</a>
           </nav>
           <div className="flex items-center gap-2">
             <LandingLanguageDropdown locale={locale} />
             <a
-              href={`${localizeDocsPath(locale, 'download')}${primaryDownload.hash ? `#${primaryDownload.hash}` : ''}`}
+              href={`${withBase(localizeDocsPath(locale, 'download'))}${primaryDownload.hash ? `#${primaryDownload.hash}` : ''}`}
               className="landing-mini-button"
             >
               {t('landing.nav.download')}
@@ -203,13 +204,13 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <a
-                href={`${localizeDocsPath(locale, 'download')}${primaryDownload.hash ? `#${primaryDownload.hash}` : ''}`}
+                href={`${withBase(localizeDocsPath(locale, 'download'))}${primaryDownload.hash ? `#${primaryDownload.hash}` : ''}`}
                 className="landing-primary-button"
               >
                 <Download className="h-4 w-4" />
                 {primaryDownload.label}
               </a>
-              <a href={localizeDocsPath(locale)} className="landing-secondary-button">
+              <a href={withBase(localizeDocsPath(locale))} className="landing-secondary-button">
                 {t('landing.hero.docsButton')}
                 <ArrowRight className="h-4 w-4" />
               </a>
@@ -232,8 +233,9 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
               alt="Clepsydre application screenshot"
               className="h-auto w-full object-cover shadow-[0_40px_90px_rgba(2,6,23,0.55)]"
               onError={() => {
-                if (previewSrc !== '/images/app-preview-placeholder.svg') {
-                  setPreviewSrc('/images/app-preview-placeholder.svg');
+                const placeholder = withBase('images/app-preview-placeholder.svg');
+                if (previewSrc !== placeholder) {
+                  setPreviewSrc(placeholder);
                 }
               }}
             />
@@ -274,7 +276,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
               {platformCards.map((item) => (
                 <a
                   key={item.title}
-                  href={`${localizeDocsPath(locale, 'download')}#${item.hash}`}
+                  href={`${withBase(localizeDocsPath(locale, 'download'))}#${item.hash}`}
                   className={`landing-platform-card ${item.isRecommended ? 'landing-platform-card-active' : ''}`}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -286,7 +288,7 @@ export function LandingPage({ locale }: { locale: SiteLocale }) {
               ))}
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400">
-              <a href={localizeDocsPath(locale)} className="hover:text-emerald-200">
+              <a href={withBase(localizeDocsPath(locale))} className="hover:text-emerald-200">
                 {t('landing.links.docs')}
               </a>
               <span>•</span>
@@ -424,7 +426,7 @@ function LandingLanguageDropdown({ locale }: { locale: SiteLocale }) {
       setOpen(false);
       if (target !== locale) {
         if (target === defaultLocale) {
-          window.location.replace(localizePath(target));
+          window.location.replace(withBase(localizePath(target)));
         } else {
           void navigate({ to: '/$lang', params: { lang: target }, replace: true });
         }
@@ -497,9 +499,11 @@ function FooterColumn({ title, links, locale }: FooterColumnProps) {
           <li key={link.label}>
             {link.href.startsWith('/docs') || link.href === '/download' ? (
               <a
-                href={localizeDocsPath(
-                  locale,
-                  link.href === '/download' ? 'download' : link.href.replace(/^\/docs\/?/, ''),
+                href={withBase(
+                  localizeDocsPath(
+                    locale,
+                    link.href === '/download' ? 'download' : link.href.replace(/^\/docs\/?/, ''),
+                  ),
                 )}
                 className="text-xs text-slate-400 transition hover:text-emerald-200"
               >

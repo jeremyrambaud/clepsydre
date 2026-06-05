@@ -235,7 +235,7 @@ const en = {
     estimate: "Est: {{value}}",
     totalAtEntry: "Total: {{value}}",
     inProgress: "In progress",
-    imputedOn: "Logged on #{{issueId}} · {{project}}",
+    imputedOn: "Logged on #{{issueId}} · {{label}}",
     noEstimateShort: "No est.",
     editEntry: "Edit entry",
     duplicateEntry: "Duplicate entry",

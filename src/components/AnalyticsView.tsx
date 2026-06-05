@@ -280,8 +280,6 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
   }, [calendarCells]);
 
   const frenchHolidayNamesByDate = useMemo(() => {
-    if (!i18n.language.startsWith("fr")) return new Map<string, string>();
-
     const years = [...new Set(calendarCells.map((cell) => cell.date.getFullYear()))];
     const allHolidays = new Map<string, string>();
 
@@ -292,7 +290,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     });
 
     return allHolidays;
-  }, [calendarCells, i18n.language]);
+  }, [calendarCells]);
 
   useEffect(() => {
     if (!calendarContextMenu) return;
@@ -719,6 +717,45 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     return { points, projects: projectOrder, maxMinutes };
   }, [filteredCurrentWeekSessions, locale, selectedWeekStart, showWeekendsInWeeklyActivity, targetDailyMinutes]);
 
+  const weeklyDayMetadataByKey = useMemo(() => {
+    const years = [...new Set(weeklyStackData.points.map((point) => new Date(`${point.dayKey}T00:00:00`).getFullYear()))];
+    const holidayNameKeyByDate = new Map<string, string>();
+    years.forEach((year) => {
+      getFrenchPublicHolidays(year).forEach(({ dateKey, nameKey }) => {
+        holidayNameKeyByDate.set(dateKey, nameKey);
+      });
+    });
+
+    const metadataByKey = new Map<string, {
+      isWorkingDay: boolean;
+      isHoliday: boolean;
+      holidayName: string;
+      dayName: string;
+    }>();
+
+    weeklyStackData.points.forEach((point) => {
+      const date = new Date(`${point.dayKey}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return;
+
+      const isWeekendDay = isWeekend(date);
+      const holidayNameKey = holidayNameKeyByDate.get(point.dayKey);
+      const isHoliday = Boolean(holidayNameKey);
+      const override = workdayOverrides[point.dayKey];
+      const isWorkingDay = override === "working" ? true : override === "off" ? false : (!isWeekendDay && !isHoliday);
+      const holidayName = holidayNameKey ? t(`analytics.holidayNames.${holidayNameKey}`) : "";
+      const dayName = date.toLocaleDateString(locale, { weekday: "long" });
+
+      metadataByKey.set(point.dayKey, {
+        isWorkingDay,
+        isHoliday,
+        holidayName,
+        dayName,
+      });
+    });
+
+    return metadataByKey;
+  }, [locale, t, weeklyStackData.points, workdayOverrides]);
+
   const hasWeeklyActivityData = useMemo(() => {
     return weeklyStackData.points.some((point) => point.totalMinutes > 0);
   }, [weeklyStackData.points]);
@@ -819,9 +856,86 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
     const mutedForeground = readRootColorVar("--muted-foreground", "#c6c6cd");
     const border = readRootColorVar("--border", "rgba(69, 70, 77, 0.2)");
     const strongGrid = readRootColorVar("--input", "rgba(69, 70, 77, 0.3)");
+    const dailyGoalLineColor = readRootColorVar("--tertiary", "#79AEE3");
+    const holidayBandColor = "rgba(121, 174, 227, 0.14)";
+    const nonWorkingBandColor = "rgba(198, 198, 205, 0.1)";
     const hourFormatter = new Intl.NumberFormat(locale, {
       maximumFractionDigits: 1,
     });
+
+    const weeklyNonWorkingDayBands = weeklyStackData.points.reduce<Array<{
+      from: number;
+      to: number;
+      color: string;
+      label?: {
+        text: string;
+        align: "center";
+        verticalAlign: "middle";
+        y: number;
+        style: {
+          color: string;
+          fontSize: string;
+          fontWeight: string;
+          textOverflow: string;
+        };
+      };
+    }>>((bands, point, index) => {
+      const metadata = weeklyDayMetadataByKey.get(point.dayKey);
+      if (!metadata || metadata.isWorkingDay) return bands;
+
+      const isHoliday = metadata.isHoliday;
+      const band: {
+        from: number;
+        to: number;
+        color: string;
+        label?: {
+          text: string;
+          align: "center";
+          verticalAlign: "middle";
+          y: number;
+          style: {
+            color: string;
+            fontSize: string;
+            fontWeight: string;
+            textOverflow: string;
+          };
+        };
+      } = {
+        from: index - 0.42,
+        to: index + 0.42,
+        color: isHoliday ? holidayBandColor : nonWorkingBandColor,
+      };
+      if (isHoliday && metadata.holidayName) {
+        band.label = {
+          text: metadata.holidayName,
+          align: "center",
+          verticalAlign: "middle",
+          y: 0,
+          style: {
+            color: mutedForeground,
+            fontSize: "10px",
+            fontWeight: "600",
+            textOverflow: "ellipsis",
+          },
+        };
+      } else {
+        band.label = {
+          text: metadata.dayName,
+          align: "center",
+          verticalAlign: "middle",
+          y: 0,
+          style: {
+            color: mutedForeground,
+            fontSize: "10px",
+            fontWeight: "600",
+            textOverflow: "ellipsis",
+          },
+        };
+      }
+      bands.push(band);
+
+      return bands;
+    }, []);
 
     return {
       chart: {
@@ -841,6 +955,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         lineColor: border,
         gridLineWidth: 1,
         gridLineColor: border,
+        plotBands: weeklyNonWorkingDayBands,
         tickLength: 0,
         labels: {
           style: {
@@ -852,6 +967,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
       },
       yAxis: {
         min: 0,
+        softMax: weeklyStackData.maxMinutes,
         title: {
           text: t("analytics.yAxisHours"),
           style: {
@@ -875,6 +991,26 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             return `${hourFormatter.format(hours)}h`;
           },
         },
+        plotLines: [
+          {
+            value: targetDailyMinutes,
+            color: dailyGoalLineColor,
+            width: 2,
+            dashStyle: "ShortDash",
+            zIndex: 5,
+            label: {
+              text: `${t("analytics.dailyGoal")} (${formatMinutesAsHoursLabel(targetDailyMinutes)})`,
+              align: "right",
+              x: -4,
+              y: -6,
+              style: {
+                color: dailyGoalLineColor,
+                fontSize: "10px",
+                fontWeight: "600",
+              },
+            },
+          },
+        ],
       },
       tooltip: {
         shared: true,
@@ -882,6 +1018,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         formatter: function (this: any): string {
           const pointIndex = this.points?.[0]?.point?.index ?? -1;
           const dayKey = weeklyStackData.points[pointIndex]?.dayKey;
+          const metadata = dayKey ? weeklyDayMetadataByKey.get(dayKey) : null;
           const dayLabel = dayKey
             ? new Date(`${dayKey}T00:00:00`).toLocaleDateString(locale, {
                 weekday: "long",
@@ -891,6 +1028,13 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             : `${this.x ?? ""}`;
 
           const header = `<span style=\"font-size: 11px\">${dayLabel}</span><br/>`;
+          const status = metadata && !metadata.isWorkingDay
+            ? `<span style=\"font-size:10px;color:${mutedForeground}\">${
+                metadata.isHoliday && metadata.holidayName
+                  ? `${t("analytics.publicHoliday")}: ${metadata.holidayName}`
+                  : t("analytics.dayStatusNonWorking")
+              }</span><br/>`
+            : "";
           const rows = (this.points ?? [])
             .filter((point: any) => (typeof point.y === "number" ? point.y : 0) > 0)
             .map((point: any) => {
@@ -900,10 +1044,10 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             .join("");
 
           if (!rows) {
-            return `${header}<span>${t("analytics.noData")}</span>`;
+            return `${header}${status}<span>${t("analytics.noData")}</span>`;
           }
 
-          return `${header}${rows}`;
+          return `${header}${status}${rows}`;
         },
       },
       plotOptions: {
@@ -965,7 +1109,16 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         },
       },
     } as const;
-  }, [activeMonth, locale, t, weeklyChartSeries, weeklyStackData.points]);
+  }, [
+    activeMonth,
+    locale,
+    t,
+    targetDailyMinutes,
+    weeklyChartSeries,
+    weeklyStackData.maxMinutes,
+    weeklyStackData.points,
+    weeklyDayMetadataByKey,
+  ]);
 
   const monthlyTaskRankingChartOptions = useMemo(() => {
     const mutedForeground = readRootColorVar("--muted-foreground", "#c6c6cd");
@@ -1346,90 +1499,7 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:flex-1 xl:grid-cols-12 xl:min-h-96">
-        <div className="relative rounded-xl border border-border bg-surface-container p-4 xl:col-span-7 xl:h-full min-h-0 overflow-hidden flex flex-col">
-          <h3 className="text-3 font-semibold font-heading text-foreground">{t("analytics.weeklyActivity")}</h3>
-          <p className="mb-4 text-sm text-muted-foreground">{t("analytics.weeklyActivitySubtitle")}</p>
-
-          <div className="min-h-0 flex-1 border-y border-border/60 py-3">
-            {hasWeeklyActivityData ? (
-              <Chart
-                options={weeklyChartOptions as any}
-                containerProps={{
-                  className: "h-full w-full",
-                }}
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                {!isWeekLoading && t("analytics.noData")}
-              </div>
-            )}
-          </div>
-
-          <div
-            className={`mt-4 flex items-center pb-1 text-xs ${
-              shouldWrapWeeklyProjectsLegend
-                ? "flex-wrap gap-x-4 gap-y-2"
-                : "flex-nowrap gap-4 overflow-x-auto"
-            }`}
-          >
-            {weeklyStackData.projects.map((project, index) => (
-              <div
-                key={project}
-                className={`flex items-center gap-1.5 text-muted-foreground transition-opacity ${
-                  hoveredLegendProject && hoveredLegendProject !== project ? "opacity-40" : "opacity-100"
-                }`}
-                onMouseEnter={(event) => {
-                  setHoveredLegendProject(project);
-                  setLegendHoverPosition({
-                    x: event.clientX + 14,
-                    y: event.clientY + 14,
-                  });
-                }}
-                onMouseMove={(event) => {
-                  setLegendHoverPosition({
-                    x: event.clientX + 14,
-                    y: event.clientY + 14,
-                  });
-                }}
-                onMouseLeave={() => {
-                  setHoveredLegendProject(null);
-                  setLegendHoverPosition(null);
-                }}
-              >
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: weeklyProjectColorMap.get(project) ?? getWeeklySeriesColor(index, weeklyStackData.projects.length) }}
-                />
-                <span>{project}</span>
-              </div>
-            ))}
-
-            {hoveredLegendProject && legendHoverPosition && (
-              <div
-                className="pointer-events-none fixed z-40 rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-[11px] text-foreground shadow-sm"
-                style={{
-                  left: `${legendHoverPosition.x}px`,
-                  top: `${legendHoverPosition.y}px`,
-                }}
-              >
-                {t("analytics.weeklyProjectTotal", {
-                  value: formatMinutesAsHoursLabel(weeklyProjectMinutesMap.get(hoveredLegendProject) ?? 0),
-                })}
-              </div>
-            )}
-          </div>
-
-          {isWeekLoading && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface-container/50 backdrop-blur-[1px]">
-              <div className="inline-flex items-center gap-2 rounded-md border border-border bg-background/90 px-3 py-1.5 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                {t("analytics.loadingWeeklyActivity")}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="relative rounded-xl border border-border bg-surface-container p-4 xl:col-span-5 xl:h-full min-h-0 overflow-hidden flex flex-col">
+      <div className="relative rounded-xl border border-border bg-surface-container p-4 xl:col-span-5 xl:h-full min-h-0 overflow-hidden flex flex-col">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-tertiary" />
@@ -1655,6 +1725,89 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
               <div className="inline-flex items-center gap-2 rounded-md border border-border bg-background/90 px-3 py-1.5 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {t("analytics.loadingCalendar")}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="relative rounded-xl border border-border bg-surface-container p-4 xl:col-span-7 xl:h-full min-h-0 overflow-hidden flex flex-col">
+          <h3 className="text-3 font-semibold font-heading text-foreground">{t("analytics.weeklyActivity")}</h3>
+          <p className="mb-4 text-sm text-muted-foreground">{t("analytics.weeklyActivitySubtitle")}</p>
+
+          <div className="min-h-0 flex-1 border-y border-border/60 py-3">
+            {hasWeeklyActivityData ? (
+              <Chart
+                options={weeklyChartOptions as any}
+                containerProps={{
+                  className: "h-full w-full",
+                }}
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                {!isWeekLoading && t("analytics.noData")}
+              </div>
+            )}
+          </div>
+
+          <div
+            className={`mt-4 flex items-center pb-1 text-xs ${
+              shouldWrapWeeklyProjectsLegend
+                ? "flex-wrap gap-x-4 gap-y-2"
+                : "flex-nowrap gap-4 overflow-x-auto"
+            }`}
+          >
+            {weeklyStackData.projects.map((project, index) => (
+              <div
+                key={project}
+                className={`flex items-center gap-1.5 text-muted-foreground transition-opacity ${
+                  hoveredLegendProject && hoveredLegendProject !== project ? "opacity-40" : "opacity-100"
+                }`}
+                onMouseEnter={(event) => {
+                  setHoveredLegendProject(project);
+                  setLegendHoverPosition({
+                    x: event.clientX + 14,
+                    y: event.clientY + 14,
+                  });
+                }}
+                onMouseMove={(event) => {
+                  setLegendHoverPosition({
+                    x: event.clientX + 14,
+                    y: event.clientY + 14,
+                  });
+                }}
+                onMouseLeave={() => {
+                  setHoveredLegendProject(null);
+                  setLegendHoverPosition(null);
+                }}
+              >
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: weeklyProjectColorMap.get(project) ?? getWeeklySeriesColor(index, weeklyStackData.projects.length) }}
+                />
+                <span>{project}</span>
+              </div>
+            ))}
+
+            {hoveredLegendProject && legendHoverPosition && (
+              <div
+                className="pointer-events-none fixed z-40 rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-[11px] text-foreground shadow-sm"
+                style={{
+                  left: `${legendHoverPosition.x}px`,
+                  top: `${legendHoverPosition.y}px`,
+                }}
+              >
+                {t("analytics.weeklyProjectTotal", {
+                  value: formatMinutesAsHoursLabel(weeklyProjectMinutesMap.get(hoveredLegendProject) ?? 0),
+                })}
+              </div>
+            )}
+          </div>
+
+          {isWeekLoading && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-surface-container/50 backdrop-blur-[1px]">
+              <div className="inline-flex items-center gap-2 rounded-md border border-border bg-background/90 px-3 py-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                {t("analytics.loadingWeeklyActivity")}
               </div>
             </div>
           )}

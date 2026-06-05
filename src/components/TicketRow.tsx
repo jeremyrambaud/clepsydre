@@ -132,7 +132,7 @@ export function TicketRow({ session, cumulativeSpent, isActiveTimelineEntry = fa
             </TruncatedText>
             {isLoggedOnDifferentIssue && (
               <TruncatedText className="text-[11px] text-muted-foreground block mt-1" tooltipClassName="max-w-sm">
-                {t("ticketRow.imputedOn", { issueId: loggedIssue.id, project: loggedIssue.project.name })}
+                {t("ticketRow.imputedOn", { issueId: loggedIssue.id, label: loggedIssue.subject })}
               </TruncatedText>
             )}
             {sessionComment && (

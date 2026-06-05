@@ -235,7 +235,7 @@ const fr = {
     estimate: "Est. : {{value}}",
     totalAtEntry: "Total : {{value}}",
     inProgress: "En cours",
-    imputedOn: "Imputé sur #{{issueId}} · {{project}}",
+    imputedOn: "Imputé sur #{{issueId}} · {{label}}",
     noEstimateShort: "Sans est.",
     editEntry: "Modifier l'entrée",
     duplicateEntry: "Dupliquer l'entrée",

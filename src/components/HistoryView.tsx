@@ -1016,7 +1016,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
                         <TruncatedText
                           text={t("ticketRow.imputedOn", {
                             issueId: loggedIssue.id,
-                            project: loggedIssue.project.name,
+                            label: loggedIssue.subject,
                           })}
                           className="mt-1 text-[11px] text-tertiary"
                           tooltipClassName="max-w-sm wrap-break-word"
@@ -1104,7 +1104,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
                       <p className="mt-1 wrap-break-word text-[11px] text-tertiary">
                         {t("ticketRow.imputedOn", {
                           issueId: loggedIssue.id,
-                          project: loggedIssue.project.name,
+                          label: loggedIssue.subject,
                         })}
                       </p>
                     )}

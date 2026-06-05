@@ -29,6 +29,19 @@ struct GithubReleaseResponse {
     body: Option<String>,
 }
 
+#[derive(serde::Deserialize)]
+struct GithubReleaseAssetResponse {
+    name: String,
+    browser_download_url: String,
+}
+
+#[derive(serde::Deserialize)]
+struct GithubReleaseSummaryResponse {
+    prerelease: bool,
+    #[serde(default)]
+    assets: Vec<GithubReleaseAssetResponse>,
+}
+
 const MIN_WINDOW_WIDTH: f64 = 390.0;
 const MIN_WINDOW_HEIGHT: f64 = 700.0;
 
@@ -166,10 +179,49 @@ fn restore_window_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     let _ = window.set_position(Position::Logical(LogicalPosition::new(saved.x, saved.y)));
 }
 
-fn update_endpoint_for_channel(channel: &str) -> &'static str {
+fn stable_manifest_endpoint() -> &'static str {
+    "https://github.com/jeremyrambaud/clepsydre/releases/latest/download/latest.json"
+}
+
+async fn fetch_latest_prerelease_manifest_endpoint() -> Option<String> {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .ok()?;
+
+    let response = client
+        .get("https://api.github.com/repos/jeremyrambaud/clepsydre/releases?per_page=20")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .header("User-Agent", "clepsydre-updater")
+        .send()
+        .await
+        .ok()?;
+
+    if !response.status().is_success() {
+        return None;
+    }
+
+    let releases = response.json::<Vec<GithubReleaseSummaryResponse>>().await.ok()?;
+    for release in releases {
+        if !release.prerelease {
+            continue;
+        }
+
+        if let Some(asset) = release.assets.into_iter().find(|asset| asset.name == "latest.json") {
+            return Some(asset.browser_download_url);
+        }
+    }
+
+    None
+}
+
+async fn update_endpoint_for_channel(channel: &str) -> String {
     match channel {
-        "beta" => "https://github.com/jeremyrambaud/clepsydre/releases/download/latest-beta/latest.json",
-        _ => "https://github.com/jeremyrambaud/clepsydre/releases/download/latest-stable/latest.json",
+        "beta" => fetch_latest_prerelease_manifest_endpoint()
+            .await
+            .unwrap_or_else(|| stable_manifest_endpoint().to_string()),
+        _ => stable_manifest_endpoint().to_string(),
     }
 }
 
@@ -357,8 +409,9 @@ async fn check_for_updates(
     pending_update_state: tauri::State<'_, Arc<Mutex<Option<Update>>>>,
 ) -> Result<Option<UpdateMetadata>, String> {
     let selected_channel = channel.unwrap_or_else(|| "stable".to_string());
-    let endpoint = update_endpoint_for_channel(&selected_channel);
-    let endpoint_url = Url::parse(endpoint).map_err(|e| format!("Invalid update endpoint: {e}"))?;
+    let endpoint = update_endpoint_for_channel(&selected_channel).await;
+    let endpoint_url =
+        Url::parse(endpoint.as_str()).map_err(|e| format!("Invalid update endpoint: {e}"))?;
 
     let updater = app
         .updater_builder()

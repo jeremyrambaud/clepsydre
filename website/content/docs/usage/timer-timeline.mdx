@@ -1,0 +1,56 @@
+---
+title: Timeline du timer
+description: Consulter les entrées du jour et agir sur vos sessions depuis l'écran Timer.
+---
+
+Sous les contrôles du timer, la section **Timeline** liste vos entrées de temps Redmine, regroupées par jour, avec une ligne en direct pour le timer en cours.
+
+<div align="center">![Timeline](/images/timer-timeline-overview.png)</div>
+
+## En-têtes de journée
+
+Chaque journée affiche un en-tête (**Aujourd'hui**, **Hier** ou la date) accompagné de totaux :
+
+- nombre d'heures imputées ;
+- nombre de projets concernés ;
+- nombre de tickets ;
+- nombre d'entrées.
+
+## Contenu d'une ligne
+
+Chaque entrée affiche notamment :
+
+- l'heure de **début** et de **fin** ;
+- le **#ID** du ticket, le **projet** et l'**intitulé** ;
+- la **durée** de la session ;
+- la progression vis-à-vis de l'estimation, si disponible ;
+- le **commentaire** (le préfixe automatique d'imputation croisée est masqué) ;
+- le temps **cumulé** passé.
+
+## L'entrée en cours
+
+Tant que le timer tourne, une ligne supplémentaire apparaît en haut, mise en évidence, avec un badge **« En cours »** et le temps écoulé en direct. Cette ligne ne propose **aucune action** : elle reflète simplement le timer actif.
+
+## Actions sur une entrée passée
+
+Les actions proposées permettent de :
+- **Ouvrir dans Redmine** ;
+- **Démarrer le timer** sur ce ticket ;
+
+  <Callout type="warn">
+  Si un timer tourne déjà sur un **autre** ticket, cliquer sur une entrée déclenche d'abord la fenêtre d'arrêt et d'imputation, afin de ne pas perdre le temps en cours.
+  </Callout>
+
+  Si l'option **Préremplir le dernier commentaire** est active, le commentaire de la ligne est réutilisé comme brouillon.
+
+Le menu (⋯) d'une entrée passée propose :
+
+- **Modifier l'entrée** ;
+- **Dupliquer l'entrée** ;
+- **Supprimer l'entrée** (avec confirmation).
+
+<div align="center">![Timeline actions](/images/timer-timeline-actions.png)</div>
+
+## Charger plus
+
+Le bouton **Charger plus** récupère les entrées Redmine plus anciennes, par pages.

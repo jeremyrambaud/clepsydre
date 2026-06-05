@@ -1,0 +1,55 @@
+---
+title: Historique
+description: Rechercher, filtrer, trier et gérer toutes vos entrées de temps Redmine.
+---
+
+L'écran **Historique** est une vue tableau de toutes vos entrées de temps Redmine. Il sert à retrouver, analyser et corriger vos saisies sur une période donnée.
+
+<div align="center">![Historique](/images/history-overview.png)</div>
+
+## Filtres
+
+Le bandeau de filtres permet d'affiner les résultats. À l'ouverture, l'historique affiche le **mois en cours**.
+
+| Filtre | Description |
+|--------|-------------|
+| **Ticket** | Recherche d'un ticket par #ID ou par intitulé (autocomplétion). |
+| **Projet** | Sélection multiple de projets (avec recherche). |
+| **Activité** | Filtre par type d'activité Redmine. |
+| **Période** | Préréglages : aujourd'hui, cette semaine, semaine dernière, ce mois, mois dernier, cette année, ou personnalisé. |
+| **Du / Au** | Dates de début et de fin personnalisées (passe automatiquement en mode « personnalisé »). |
+
+Le bouton **Réinitialiser les filtres** rétablit la vue par défaut (mois en cours, sans filtre).
+
+## Indicateurs de synthèse
+
+Quatre cartes résument les entrées filtrées :
+
+- **Temps total** ;
+- **Nombre de projets** distincts ;
+- **Nombre de tickets** distincts ;
+- **Nombre d'entrées**.
+
+## Tableau des entrées
+
+Chaque ligne affiche la date, le **#ID**, le projet, le ticket, l'activité, la durée, la progression vis-à-vis de l'estimation, et le commentaire.
+
+- Les colonnes **Date** et **Durée** sont **triables** (ascendant / descendant).
+- Une entrée imputée sur un autre ticket affiche la mention **« Imputé sur #ID · Projet »**.
+- Le préfixe automatique de commentaire (imputation croisée) est masqué pour la lisibilité.
+
+## Actions sur une entrée
+
+Sur chaque ligne, les actions disponibles sont :
+
+- **Ouvrir dans Redmine** ;
+- **Démarrer le timer** sur ce ticket ;
+- **Modifier l'entrée** (uniquement pour les entrées enregistrées sur Redmine) ;
+- **Dupliquer l'entrée** ;
+- **Supprimer l'entrée** (avec confirmation).
+
+<div align="center">![Historique - Actions sur une entrée](/images/history-row-actions.png)</div>
+
+## Pagination
+
+Le bas de l'écran indique le **nombre total** d'entrées et permet de choisir le nombre d'éléments par page (10, 25, 50, 100) ainsi que de naviguer entre les pages.

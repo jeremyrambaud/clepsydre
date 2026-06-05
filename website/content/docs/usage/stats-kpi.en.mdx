@@ -1,0 +1,42 @@
+---
+title: Key indicators (KPIs)
+description: Understand the three indicators at the top of the Statistics screen.
+---
+
+The **Statistics** screen opens on three key indicators (KPIs) that summarize your activity. They are based on the **selected day** in the calendar and on the **displayed month**.
+
+<div align="center">![KPI cards](/images/stats-kpi-cards.png)</div>
+
+## Weekly Hours
+
+Total time logged for the **week** containing the selected day (Monday to Sunday).
+
+- The subtext shows the delta versus the previous week, e.g. **"-6h 53m vs last week"**.
+- The delta is green when positive or zero, red when negative.
+
+## Most Active Project
+
+The **project** you spent the most time on this week.
+
+- The subtext shows the duration and the share of the week, e.g. **"22h31 · 80% of this week"**.
+- If no data is available, the indicator shows **"No data available"**.
+
+## Monthly Completion
+
+Compares the time **actually worked** to the **expected** time on the working days of the displayed month, up to today (or the whole month if it is in the past).
+
+- **Weekends** and (French) **public holidays** are excluded by default; custom days from the calendar are taken into account.
+- The expected time per working day matches the **daily work target** set in the settings (7h by default).
+
+Depending on the situation, the indicator shows:
+
+| State | Display |
+|-------|---------|
+| Future month | `--` + "Month has not started yet" |
+| No working day | `--` + "No workday to evaluate" |
+| On target | "Up to date" (with any overtime) |
+| Behind | Missing duration (in red) + note "excluding weekends and holidays" |
+
+<Callout type="info">
+Monthly completion depends directly on your **daily work target** settings and on the working-day customization in the [calendar](/en/docs/utilisation/stats-calendar).
+</Callout>

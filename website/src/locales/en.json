@@ -1,0 +1,171 @@
+{
+  "fumadocs": {
+    "displayName": "English",
+    "search": "Search documentation"
+  },
+  "meta": {
+    "title": "Redmine Time Tracking App",
+    "description": "App for Redmine time tracking, entry management, and workload analysis."
+  },
+  "layout": {
+    "features": "Features",
+    "docs": "Documentation",
+    "download": "Download"
+  },
+  "landing": {
+    "nav": {
+      "why": "Why",
+      "features": "Features",
+      "docs": "Documentation",
+      "download": "Download"
+    },
+    "hero": {
+      "pill": "The best way to track your spent time",
+      "titleBefore": "Track Redmine time with ",
+      "titleHighlight": "precision",
+      "titleAfter": ", without friction.",
+      "description": "Track your Redmine time with precision, simplicity, and zero friction. No more missed entries or guesswork.",
+      "docsButton": "Open documentation",
+      "badges": [
+        "macOS, Windows & Linux",
+        "Compatible Redmine 4.x / 5.x",
+        "Advanced time management",
+        "No Redmine plugin required"
+      ]
+    },
+    "meta": {
+      "title": "Redmine Time Tracking",
+      "description": "App for Redmine time tracking, entry management, and workload analysis."
+    },
+    "sections": {
+      "whyTitle": "Why Clepsydre?",
+      "whyDescription": "A desktop experience for teams using Redmine every day and wanting reliable, audit-ready time logs.",
+      "featuresTitle": "Advanced features",
+      "featuresDescription": "Everything you need to log faster, improve data quality, and analyze workload in one place.",
+      "ctaTitle": "Ready to get your time back?",
+      "ctaDescription": "Download Clepsydre for your OS, enable Redmine integration, and start clean tracking in minutes.",
+      "allDownloads": "View all release assets"
+    },
+    "platform": {
+      "windows": "Download for Windows (x64)",
+      "macos": "Download for macOS (Apple Silicon)",
+      "linux": "Download AppImage for Linux",
+      "unknown": "Open download page",
+      "windowsCard": "Windows",
+      "macosCard": "MacOS",
+      "linuxCard": "Linux"
+    },
+    "links": {
+      "docs": "Documentation",
+      "downloads": "Downloads",
+      "allReleases": "All releases",
+      "chrome": "Chrome extension",
+      "firefox": "Firefox extension"
+    },
+    "footer": {
+      "product": "Product",
+      "resources": "Resources",
+      "extensions": "Extensions",
+      "why": "Why",
+      "features": "Features",
+      "download": "Download",
+      "docs": "Documentation",
+      "github": "GitHub",
+      "releases": "Releases",
+      "builtFor": "The best way to track your time.",
+      "chrome": "Chrome",
+      "firefox": "Firefox"
+    },
+    "whyCards": [
+      { "title": "All-in-one, no Redmine needed", "description": "Manage all your time entries in Clepsydre: log, edit, review history. No need to open Redmine to track time." },
+      { "title": "Precise to the minute", "description": "Start/end times, idle detection, manual entry: every minute is accounted for with pinpoint accuracy." },
+      { "title": "Never miss an entry", "description": "Daily, weekly, and timeline views: spot gaps instantly and fill them before it's too late." },
+      { "title": "Total control", "description": "Daily, weekly and monthly stats, filterable history: keep a clear picture of your real workload." }
+    ],
+    "featureItems": [
+      { "title": "Full timer", "description": "Start, pause, stop, and reset in one click. Time your tasks effortlessly." },
+      { "title": "Idle detection", "description": "The app automatically detects breaks and offers to adjust the recorded time." },
+      { "title": "Manual entry", "description": "Enter start time, end time, and duration directly for past or planned tasks." },
+      { "title": "Inline comments", "description": "Add a description to each entry at the time of logging for contextualized tracking." },
+      { "title": "Flexible imputation", "description": "Log time on a different ticket than the active one, without leaving your work context." },
+      { "title": "Ticket search", "description": "Find any ticket instantly by ID, project, or title." },
+      { "title": "Secure credentials", "description": "Your Redmine credentials are stored in your OS secure keychain, never in plain text." },
+      { "title": "Browser extensions", "description": "Start the timer directly from a Redmine ticket with Chrome and Firefox extensions." },
+      { "title": "Visual timeline", "description": "See your day's activity at a glance on an interactive chronological timeline." },
+      { "title": "Detailed statistics", "description": "Daily, weekly, and monthly views to monitor your workload and spot discrepancies." },
+      { "title": "Advanced history", "description": "Filter, sort, and query all your past time entries to find any log instantly." },
+      { "title": "Light & dark mode", "description": "Interface adapted to your visual preferences, day or night." }
+    ]
+  },
+  "download": {
+    "loading": "Loading latest release…",
+    "latestStable": "Latest stable release",
+    "published": "Published",
+    "allReleases": "All releases",
+    "manifestError": "Unable to load release assets.",
+    "latestReleasePage": "Go to release page",
+    "whyUnsigned": "Clepsydre is not code-signed yet. Each operating system will display a security warning on first launch. The steps below let you safely bypass this restriction.",
+    "whyUnsignedTitle": "Why these extra steps?",
+    "tabsAriaLabel": "Operating system tabs",
+
+    "windows": "Windows",
+    "macos": "macOS",
+    "linux": "Linux",
+
+    "windowsExe": "Installer (.exe)",
+    "windowsExeDesc": "Recommended",
+    "windowsMsi": "Installer (.msi)",
+    "windowsMsiDesc": "Alternate",
+    "windowsSteps": [
+      "Download and run the .exe installer (or .msi if your environment blocks .exe files).",
+      "Windows SmartScreen will show a warning because the app is unsigned.",
+      "Click <strong>More info</strong>, then <strong>Run anyway</strong>.",
+      "Complete the wizard and launch Clepsydre from the Start menu."
+    ],
+    "windowsTip": "If launch is still blocked, check <strong>Windows Security → App & browser control</strong> and allow Clepsydre.",
+
+    "macAppleSilicon": "Apple Silicon (.dmg)",
+    "macAppleSiliconDesc": "M1 / M2 / M3 / M4",
+    "macIntel": "Intel (.dmg)",
+    "macIntelDesc": "x86_64",
+    "macosSteps": [
+      "Download the DMG matching your processor.",
+      "Open the .dmg and drag <strong>Clepsydre.app</strong> into <strong>Applications</strong>.",
+      "Open Terminal and run the following command to remove the quarantine attribute:",
+      "Launch Clepsydre normally from the Launchpad or Applications."
+    ],
+    "macosQuarantineCmd": "xattr -dr com.apple.quarantine \"/Applications/Clepsydre.app\"",
+    "macosKeychainTitle": "Keychain access",
+    "macosKeychainDesc": "On first launch, macOS may ask for your keychain password. Clepsydre needs access to securely store your Redmine API key. You can safely allow this.",
+
+    "linuxAppImage": "AppImage",
+    "linuxAppImageDesc": "Universal",
+    "linuxDeb": ".deb",
+    "linuxDebDesc": "Debian / Ubuntu",
+    "linuxRpm": ".rpm",
+    "linuxRpmDesc": "Fedora / RHEL",
+    "linuxIntro": "Choose the format that matches your distribution. AppImage works everywhere without installation; .deb and .rpm packages integrate natively with your package manager.",
+    "linuxSteps": [
+      "Download the file matching your distribution from the links above.",
+      "Install or make the downloaded file executable using the commands below.",
+      "Launch Clepsydre from your app launcher or from the terminal."
+    ],
+    "linuxAppImageTitle": "AppImage — Direct execution",
+    "linuxAppImageInstructions": "Make the file executable and run it directly. No installation required.",
+    "linuxDebTitle": "Debian / Ubuntu — Install via apt",
+    "linuxDebInstructions": "Install the .deb package with apt. Dependencies are resolved automatically.",
+    "linuxRpmTitle": "Fedora / RHEL / openSUSE — Install via rpm",
+    "linuxRpmInstructions": "Install the RPM package using the rpm command.",
+    "linuxWebkitNote": "On some distributions, <strong>WebKitGTK</strong> may need to be installed separately. If the app fails to launch, install it via your package manager.",
+    "linuxWebkitCmdDebian": "sudo apt install libwebkit2gtk-4.1-0",
+    "linuxWebkitCmdFedora": "sudo dnf install webkit2gtk4.1",
+
+    "extensionsTitle": "Browser extensions",
+    "extensionsDescription": "Start the timer directly from a Redmine ticket in your browser. Extensions work right after installation, no configuration needed.",
+    "extensionChrome": "Chrome Web Store",
+    "extensionChromeDesc": "Google Chrome",
+    "extensionFirefox": "Firefox Add-ons",
+    "extensionFirefoxDesc": "Mozilla Firefox",
+    "extensionsNoConfig": "No configuration required: install the extension and it automatically detects Clepsydre on your machine."
+  }
+}

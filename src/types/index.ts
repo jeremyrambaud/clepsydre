@@ -64,6 +64,7 @@ export type WorkdayOverride = "working" | "off";
 export interface UserSettings {
   redmine_url: string;
   api_key: string;
+  onboarding_seen: boolean;
   language: "en" | "fr";
   default_activity_id: number | null;
   default_comment: string;

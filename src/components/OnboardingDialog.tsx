@@ -71,6 +71,7 @@ export function OnboardingDialog({ open, onComplete }: OnboardingDialogProps) {
       await saveSettings({
         redmine_url: draft.redmine_url.trim(),
         api_key: draft.api_key.trim(),
+        onboarding_seen: true,
         language: draft.language,
         theme: draft.theme,
         launch_at_startup: draft.launch_at_startup,

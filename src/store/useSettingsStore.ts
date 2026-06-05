@@ -24,6 +24,7 @@ interface SettingsState {
 const defaultSettings: UserSettings = {
   redmine_url: "",
   api_key: "",
+  onboarding_seen: false,
   language: detectInitialLanguage(),
   default_activity_id: null,
   default_comment: "",

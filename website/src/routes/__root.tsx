@@ -12,7 +12,7 @@ import { RootProvider } from 'fumadocs-ui/provider/tanstack';
 import SearchDialog from '@/components/search';
 import { appName, brand, gitConfig } from '@/lib/shared';
 import { getI18nProvider } from '@/lib/layout.shared';
-import { defaultLocale, localizePath, normalizeLocale, type SiteLocale } from '@/lib/i18n';
+import { defaultLocale, localizePath, normalizeLocale, type SiteLocale, withBase } from '@/lib/i18n';
 import i18next from '@/lib/i18next';
 
 const rootT = i18next.getFixedT(defaultLocale);
@@ -33,7 +33,7 @@ export const Route = createRootRoute({
         { property: 'og:url', content: `https://${gitConfig.user}.github.io/${gitConfig.repo}/` },
       ],
       links: [
-        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'icon', type: 'image/svg+xml', href: withBase('favicon.svg') },
         { rel: 'stylesheet', href: appCss },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
@@ -85,7 +85,7 @@ function RootComponent() {
           }
         } else {
           if (target === defaultLocale) {
-            window.location.replace(localizePath(defaultLocale));
+            window.location.replace(withBase(localizePath(defaultLocale)));
           } else {
             void navigate({
               to: '/$lang',

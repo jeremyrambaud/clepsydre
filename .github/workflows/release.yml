@@ -58,7 +58,7 @@ jobs:
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
           args: ${{ matrix.platform == 'windows-latest' && contains(github.ref_name, '-') && '--bundles nsis' || matrix.args }}
-          uploadUpdaterSignatures: false
+          uploadUpdaterSignatures: true
 
   package-extensions:
     name: Package browser extensions

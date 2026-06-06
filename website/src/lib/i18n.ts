@@ -26,7 +26,7 @@ export function getLocaleLabel(locale: SiteLocale): string {
   return locale === 'fr' ? 'Français' : 'English';
 }
 
-const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+const basePath = (import.meta.env.BASE_PATH || '/').replace(/\/+$/, '');
 
 /**
  * Prefixes a root-absolute path with the deployment base path (e.g. `/clepsydre`).

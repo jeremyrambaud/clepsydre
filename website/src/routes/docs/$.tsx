@@ -13,7 +13,7 @@ import {
 } from 'fumadocs-ui/layouts/docs/page';
 import { baseOptions } from '@/lib/layout.shared';
 import { gitConfig } from '@/lib/shared';
-import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions';
+import { staticFunctionMiddleware } from '@/lib/static-fn-middleware';
 import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { Suspense } from 'react';
 import { useMDXComponents } from '@/components/mdx';

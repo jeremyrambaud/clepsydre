@@ -1,4 +1,4 @@
-import { createMiddleware, getDefaultSerovalPlugins } from '@tanstack/start-client-core';
+import { defaultSerovalPlugins } from '@tanstack/router-core';
 import { fromJSON, toJSONAsync } from 'seroval';
 import { withBase } from '@/lib/i18n';
 
@@ -48,58 +48,64 @@ function jsonToFilenameSafeString(json: unknown): string {
 
 const staticClientCache = typeof document !== 'undefined' ? new Map<string, unknown>() : null;
 
-export const staticFunctionMiddleware = createMiddleware({ type: 'function' })
-  // biome-ignore lint/suspicious/noExplicitAny: middleware ctx mirrors the upstream JS implementation
-  .client(async (ctx: any) => {
-    if (process.env.NODE_ENV === 'production' && typeof document !== 'undefined') {
-      const cachePath = await getStaticCachePath({
-        functionId: ctx.serverFnMeta.id,
-        hash: jsonToFilenameSafeString(ctx.data),
-      });
-      const url = withBase(cachePath);
+const serovalPlugins = [...defaultSerovalPlugins];
 
-      let response = staticClientCache?.get(url);
-      if (!response) {
-        response = await fetch(url, { method: 'GET' })
-          .then((r) => r.json())
-          .then((d) => fromJSON(d, { plugins: getDefaultSerovalPlugins() }));
-        staticClientCache?.set(url, response);
-      }
+export const staticFunctionMiddleware = {
+  options: {
+    type: 'function',
+    // biome-ignore lint/suspicious/noExplicitAny: middleware ctx mirrors the upstream JS implementation
+    client: async (ctx: any) => {
+      if (process.env.NODE_ENV === 'production' && typeof document !== 'undefined') {
+        const cachePath = await getStaticCachePath({
+          functionId: ctx.serverFnMeta.id,
+          hash: jsonToFilenameSafeString(ctx.data),
+        });
+        const url = withBase(cachePath);
 
-      if (response) {
-        const typed = response as { result: unknown; context: Record<string, unknown> };
-        return {
-          result: typed.result,
-          context: {
-            ...ctx.context,
-            ...typed.context,
-          },
-        };
+        let response = staticClientCache?.get(url);
+        if (!response) {
+          response = await fetch(url, { method: 'GET' })
+            .then((r) => r.json())
+            .then((d) => fromJSON(d, { plugins: serovalPlugins }));
+          staticClientCache?.set(url, response);
+        }
+
+        if (response) {
+          const typed = response as { result: unknown; context: Record<string, unknown> };
+          return {
+            result: typed.result,
+            context: {
+              ...ctx.context,
+              ...typed.context,
+            },
+          };
+        }
       }
-    }
-    return ctx.next();
-  })
-  // biome-ignore lint/suspicious/noExplicitAny: middleware ctx mirrors the upstream JS implementation
-  .server(async (ctx: any) => {
-    const response = await ctx.next();
-    if (process.env.NODE_ENV === 'production' && process.env.TSS_CLIENT_OUTPUT_DIR) {
-      const [{ default: fs }, { default: path }] = await Promise.all([
-        import('node:fs/promises'),
-        import('node:path'),
-      ]);
-      const cachePath = await getStaticCachePath({
-        functionId: ctx.serverFnMeta.id,
-        hash: jsonToFilenameSafeString(ctx.data),
-      });
-      const filePath = path.join(process.env.TSS_CLIENT_OUTPUT_DIR, cachePath);
-      await fs.mkdir(path.dirname(filePath), { recursive: true });
-      const stringifiedResult = JSON.stringify(
-        await toJSONAsync(
-          { result: response.result, context: ctx.sendContext },
-          { plugins: getDefaultSerovalPlugins() },
-        ),
-      );
-      await fs.writeFile(filePath, stringifiedResult, 'utf-8');
-    }
-    return response;
-  });
+      return ctx.next();
+    },
+    // biome-ignore lint/suspicious/noExplicitAny: middleware ctx mirrors the upstream JS implementation
+    server: async (ctx: any) => {
+      const response = await ctx.next();
+      if (process.env.NODE_ENV === 'production' && process.env.TSS_CLIENT_OUTPUT_DIR) {
+        const [{ default: fs }, { default: path }] = await Promise.all([
+          import('node:fs/promises'),
+          import('node:path'),
+        ]);
+        const cachePath = await getStaticCachePath({
+          functionId: ctx.serverFnMeta.id,
+          hash: jsonToFilenameSafeString(ctx.data),
+        });
+        const filePath = path.join(process.env.TSS_CLIENT_OUTPUT_DIR, cachePath);
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        const stringifiedResult = JSON.stringify(
+          await toJSONAsync(
+            { result: response.result, context: ctx.sendContext },
+            { plugins: serovalPlugins },
+          ),
+        );
+        await fs.writeFile(filePath, stringifiedResult, 'utf-8');
+      }
+      return response;
+    },
+  },
+} as any;

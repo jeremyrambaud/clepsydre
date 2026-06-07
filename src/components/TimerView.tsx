@@ -92,6 +92,7 @@ export function TimerView({
   const { setSelectedIssue, addSession, selectedIssue } = useIssueStore();
   const recentSessions = useIssueStore((s) => s.recentSessions);
   const settings = useSettingsStore((s) => s.settings);
+  const allowDifferentLoggedTicket = settings.allow_different_logged_ticket;
   const loadSessions = useIssueStore((s) => s.loadSessions);
 
   useEffect(() => {
@@ -182,6 +183,11 @@ export function TimerView({
     });
   }, [loggingIssueOverride, selectedIssue]);
 
+  useEffect(() => {
+    if (allowDifferentLoggedTicket) return;
+    setLoggingIssueOverride(null);
+  }, [allowDifferentLoggedTicket]);
+
   const getLastImputationTargetForIssue = useCallback((issueId: number): RedmineIssue | null => {
     const previousEntry = recentSessions.find(
       (session) => session.issue.id === issueId && session.loggedIssue?.id != null && session.loggedIssue.id !== issueId
@@ -211,14 +217,16 @@ export function TimerView({
     }
 
     setSelectedIssue(nextIssue);
-    setLoggingIssueOverride(getLastImputationTargetForIssue(nextIssue.id));
+    setLoggingIssueOverride(
+      allowDifferentLoggedTicket ? getLastImputationTargetForIssue(nextIssue.id) : null
+    );
     if (settings.auto_start_timer_on_task_select) {
       timer.start();
     } else {
       timer.reset();
     }
     return true;
-  }, [applyDraftCommentForIssue, getLastImputationTargetForIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, settings.prefill_last_comment_on_timer_start, timer]);
+  }, [allowDifferentLoggedTicket, applyDraftCommentForIssue, getLastImputationTargetForIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, settings.prefill_last_comment_on_timer_start, timer]);
 
   function handleSelectFromSession(session: WorkSession) {
     const issueChanged = selectedIssue?.id !== session.issue.id;
@@ -245,7 +253,9 @@ export function TimerView({
 
     if (issueChanged) {
       setSelectedIssue(session.issue);
-      setLoggingIssueOverride(getLastImputationTargetForIssue(session.issue.id));
+      setLoggingIssueOverride(
+        allowDifferentLoggedTicket ? getLastImputationTargetForIssue(session.issue.id) : null
+      );
     }
 
     if (!settings.auto_start_timer_on_task_select) {
@@ -296,7 +306,9 @@ export function TimerView({
     options?: { keepRunningAfterCreateSave?: boolean; stoppedAtOverride?: Date; forceCreateModal?: boolean }
   ) => {
     const contextIssue = selectedIssue;
-    const issueForLogging = loggingIssueOverride ?? selectedIssue;
+    const issueForLogging = allowDifferentLoggedTicket
+      ? (loggingIssueOverride ?? selectedIssue)
+      : selectedIssue;
     const seconds = Math.max(0, Math.floor(secondsOverride ?? timer.elapsedSeconds));
     if (seconds === 0 || !issueForLogging || !contextIssue) {
       timer.stop();
@@ -362,7 +374,7 @@ export function TimerView({
       timer.stop();
       setCreateModalOpen(true);
     }
-  }, [activeCommentDraft, addSession, applyDraftCommentForIssue, loggingIssueOverride, selectedIssue, settings, timer]);
+  }, [activeCommentDraft, addSession, allowDifferentLoggedTicket, applyDraftCommentForIssue, loggingIssueOverride, selectedIssue, settings, timer]);
 
   const handleStop = useCallback(async () => {
     keepRunningAfterCreateSaveRef.current = false;
@@ -395,21 +407,27 @@ export function TimerView({
 
   const handleOpenManualEntry = useCallback(() => {
     if (!selectedIssue) return;
-    const issueForManual = loggingIssueOverride ?? selectedIssue;
+    const issueForManual = allowDifferentLoggedTicket
+      ? (loggingIssueOverride ?? selectedIssue)
+      : selectedIssue;
     const now = new Date();
     setManualIssue(selectedIssue);
     setManualLoggedIssue(issueForManual);
     setManualAnchorTime(now);
     setManualModalOpen(true);
-  }, [loggingIssueOverride, selectedIssue]);
+  }, [allowDifferentLoggedTicket, loggingIssueOverride, selectedIssue]);
 
   const handleOpenManualEntryForIssue = useCallback((issue: RedmineIssue) => {
     const now = new Date();
     setManualIssue(issue);
-    setManualLoggedIssue(getLastImputationTargetForIssue(issue.id) ?? issue);
+    setManualLoggedIssue(
+      allowDifferentLoggedTicket
+        ? (getLastImputationTargetForIssue(issue.id) ?? issue)
+        : issue
+    );
     setManualAnchorTime(now);
     setManualModalOpen(true);
-  }, [getLastImputationTargetForIssue]);
+  }, [allowDifferentLoggedTicket, getLastImputationTargetForIssue]);
 
   useEffect(() => {
     if (pendingSwitchIssueId == null) return;
@@ -438,6 +456,7 @@ export function TimerView({
 
         let nextBillingIssue: RedmineIssue | null = null;
         if (
+          allowDifferentLoggedTicket &&
           pendingSwitchLoggedIssueId != null &&
           pendingSwitchLoggedIssueId !== issue.id
         ) {
@@ -448,12 +467,12 @@ export function TimerView({
           }
         }
 
-        if (!nextBillingIssue) {
+        if (allowDifferentLoggedTicket && !nextBillingIssue) {
           nextBillingIssue = getLastImputationTargetForIssue(issue.id);
         }
 
         setLoggingIssueOverride(
-          nextBillingIssue && nextBillingIssue.id !== issue.id
+          allowDifferentLoggedTicket && nextBillingIssue && nextBillingIssue.id !== issue.id
             ? nextBillingIssue
             : null
         );
@@ -462,7 +481,7 @@ export function TimerView({
           timer.start();
         }
 
-        if (pendingSwitchOpenBillingIssueDialog) {
+        if (allowDifferentLoggedTicket && pendingSwitchOpenBillingIssueDialog) {
           setOpenBillingIssueDialogRequestToken((token) => token + 1);
         }
       } catch (err) {
@@ -473,6 +492,7 @@ export function TimerView({
     };
     void doSwitch();
   }, [
+    allowDifferentLoggedTicket,
     finalizeStopFlow,
     getLastImputationTargetForIssue,
     onPendingSwitchHandled,
@@ -783,7 +803,9 @@ export function TimerView({
 
     if (issueChanged) {
       setSelectedIssue(issue);
-      setLoggingIssueOverride(getLastImputationTargetForIssue(issue.id));
+      setLoggingIssueOverride(
+        allowDifferentLoggedTicket ? getLastImputationTargetForIssue(issue.id) : null
+      );
     }
 
     if (!settings.auto_start_timer_on_task_select) {
@@ -801,7 +823,7 @@ export function TimerView({
     if (timer.isPaused) {
       timer.resume();
     }
-  }, [finalizeStopFlow, getLastImputationTargetForIssue, selectedIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, timer]);
+  }, [allowDifferentLoggedTicket, finalizeStopFlow, getLastImputationTargetForIssue, selectedIssue, setSelectedIssue, settings.auto_start_timer_on_task_select, timer]);
 
   const handleSwitchActiveTicketKeepElapsed = useCallback((issue: RedmineIssue) => {
     if (selectedIssue?.id === issue.id) return;
@@ -810,10 +832,17 @@ export function TimerView({
     skipNextIssuePrefillRef.current = true;
 
     setSelectedIssue(issue);
-    setLoggingIssueOverride(getLastImputationTargetForIssue(issue.id));
-  }, [getLastImputationTargetForIssue, selectedIssue?.id, setSelectedIssue]);
+    setLoggingIssueOverride(
+      allowDifferentLoggedTicket ? getLastImputationTargetForIssue(issue.id) : null
+    );
+  }, [allowDifferentLoggedTicket, getLastImputationTargetForIssue, selectedIssue?.id, setSelectedIssue]);
 
   const handleSetLoggingIssue = useCallback((issue: RedmineIssue | null) => {
+    if (!allowDifferentLoggedTicket) {
+      setLoggingIssueOverride(null);
+      return;
+    }
+
     if (!selectedIssue) {
       setLoggingIssueOverride(null);
       return;
@@ -825,7 +854,7 @@ export function TimerView({
     }
 
     setLoggingIssueOverride(issue);
-  }, [selectedIssue]);
+  }, [allowDifferentLoggedTicket, selectedIssue]);
 
   const activeTimelineSession = useMemo<WorkSession | null>(() => {
     if (!selectedIssue || !timer.isRunning) return null;
@@ -836,7 +865,9 @@ export function TimerView({
     return {
       id: `__active__${selectedIssue.id}_${start.getTime()}`,
       issue: selectedIssue,
-      loggedIssue: loggingIssueOverride ?? selectedIssue,
+      loggedIssue: allowDifferentLoggedTicket
+        ? (loggingIssueOverride ?? selectedIssue)
+        : selectedIssue,
       hours: timer.elapsedSeconds / 3600,
       activityId: settings.default_activity_id ?? 0,
       comments: activeCommentDraft,
@@ -845,7 +876,7 @@ export function TimerView({
       stoppedAt: formatHHMM(now),
       createdAt: now.toISOString(),
     };
-  }, [activeCommentDraft, loggingIssueOverride, selectedIssue, settings.default_activity_id, timer.elapsedSeconds, timer.isRunning, timer.startTime]);
+  }, [activeCommentDraft, allowDifferentLoggedTicket, loggingIssueOverride, selectedIssue, settings.default_activity_id, timer.elapsedSeconds, timer.isRunning, timer.startTime]);
 
   return (
     <div className="flex flex-col max-w-6xl mx-auto lg:h-full lg:min-h-0">
@@ -860,8 +891,8 @@ export function TimerView({
           onStop={handleStop}
           onClearIssue={() => { void handleClearActiveIssue(); }}
           onSwitchIssue={handleSwitchActiveTicketKeepElapsed}
-          billingIssue={loggingIssueOverride}
-          onBillingIssueChange={handleSetLoggingIssue}
+          billingIssue={allowDifferentLoggedTicket ? loggingIssueOverride : null}
+          onBillingIssueChange={allowDifferentLoggedTicket ? handleSetLoggingIssue : undefined}
           openBillingIssueDialogRequestToken={openBillingIssueDialogRequestToken}
           onManualEntry={handleOpenManualEntry}
           commentDraft={activeCommentDraft}

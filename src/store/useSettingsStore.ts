@@ -30,6 +30,7 @@ const defaultSettings: UserSettings = {
   default_comment: "",
   auto_start_timer_on_task_select: true,
   prefill_last_comment_on_timer_start: false,
+  allow_different_logged_ticket: true,
   express_entry: false,
   idle_detection_enabled: true,
   launch_at_startup: true,

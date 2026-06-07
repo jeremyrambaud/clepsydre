@@ -389,6 +389,22 @@ export function SettingsView() {
                 />
               </div>
 
+              <div className="py-4">
+                <SettingRow
+                  title={t("settings.allowDifferentLoggedTicket")}
+                  hint={t("settings.allowDifferentLoggedTicketHint")}
+                  control={(
+                    <Switch
+                      checked={draft.allow_different_logged_ticket}
+                      onCheckedChange={(checked) =>
+                        setDraft({ ...draft, allow_different_logged_ticket: checked })
+                      }
+                      className="data-[state=checked]:bg-primary"
+                    />
+                  )}
+                />
+              </div>
+
               <div className="py-4 last:pb-0">
                 <SettingRow
                   title={t("settings.searchInTimeComments")}

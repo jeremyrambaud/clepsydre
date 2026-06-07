@@ -70,6 +70,7 @@ export interface UserSettings {
   default_comment: string;
   auto_start_timer_on_task_select: boolean;
   prefill_last_comment_on_timer_start: boolean;
+  allow_different_logged_ticket: boolean;
   express_entry: boolean;
   idle_detection_enabled: boolean;
   launch_at_startup: boolean;

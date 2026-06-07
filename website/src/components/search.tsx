@@ -14,6 +14,7 @@ import { useDocsSearch } from 'fumadocs-core/search/client';
 import { create } from '@orama/orama';
 import { useI18n } from 'fumadocs-ui/contexts/i18n';
 import { useMemo } from 'react';
+import { withBase } from '@/lib/i18n';
 
 function makeInitOrama(locale: string | undefined) {
   return () =>
@@ -30,6 +31,7 @@ export default function DefaultSearchDialog(props: SharedProps) {
 
   const { search, setSearch, query } = useDocsSearch({
     type: 'static',
+    from: withBase('api/search'),
     initOrama,
     locale,
   });

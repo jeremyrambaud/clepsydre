@@ -188,13 +188,18 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   const { t } = useTranslation();
   const { open, onClose } = props;
   const { settings, activities, setActivities } = useSettingsStore();
+  const allowDifferentLoggedTicket = settings.allow_different_logged_ticket;
 
   const isEdit = props.mode === "edit";
   const isDuplicateIntent = !isEdit && props.intent === "duplicate";
   const initialIssue = props.mode === "edit" ? props.issue : props.issue ?? null;
-  const initialLoggedIssue = props.mode === "edit"
-    ? (props.session.loggedIssue ?? props.issue)
-    : (props.loggingIssue ?? props.issue ?? null);
+  const initialLoggedIssue = allowDifferentLoggedTicket
+    ? (
+      props.mode === "edit"
+        ? (props.session.loggedIssue ?? props.issue)
+        : (props.loggingIssue ?? props.issue ?? null)
+    )
+    : initialIssue;
 
   const defaults = isEdit
     ? {
@@ -285,6 +290,19 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaults.activity, defaults.comments, defaults.date, defaults.duration, defaults.start, defaults.stop, initialIssue, initialLoggedIssue, isEdit, open]);
+
+  useEffect(() => {
+    if (allowDifferentLoggedTicket) return;
+
+    setIsLoggedTicketSearchMode(false);
+    setLoggedIssue((current) => {
+      const nextLoggedIssue = selectedIssue ?? null;
+      if ((current?.id ?? null) === (nextLoggedIssue?.id ?? null)) {
+        return current;
+      }
+      return nextLoggedIssue;
+    });
+  }, [allowDifferentLoggedTicket, selectedIssue]);
 
   useEffect(() => {
     if (open && activities.length === 0) {
@@ -387,6 +405,8 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     option?.scrollIntoView({ block: "nearest" });
   }, [activeLoggedTicketIndex, getLoggedTicketOptionId, isLoggedTicketSearchMode, loggedTicketSearchResults]);
 
+  const effectiveLoggedIssue = allowDifferentLoggedTicket ? loggedIssue : selectedIssue;
+
   function handleTicketSearchChange(value: string) {
     setTicketSearchQuery(value);
     setActiveTicketIndex(-1);
@@ -451,7 +471,9 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
     }
 
     setSelectedIssue(issue);
-    if (!loggedIssue || loggedIssue.id === previousSelectedIssueId) {
+    if (!allowDifferentLoggedTicket) {
+      setLoggedIssue(issue);
+    } else if (!loggedIssue || loggedIssue.id === previousSelectedIssueId) {
       setLoggedIssue(issue);
     }
     setIsTicketSearchMode(false);
@@ -577,7 +599,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
   }
 
   async function handleSubmit() {
-    if (isTicketSearchMode || isLoggedTicketSearchMode) {
+    if (isTicketSearchMode || (allowDifferentLoggedTicket && isLoggedTicketSearchMode)) {
       toast.error(t("timeEntry.validationSelectTicket"));
       return;
     }
@@ -587,7 +609,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
       return;
     }
 
-    if (!loggedIssue) {
+    if (allowDifferentLoggedTicket && !effectiveLoggedIssue) {
       toast.error(t("timeEntry.validationSelectLoggedTicket"));
       return;
     }
@@ -604,11 +626,17 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
 
     setIsSaving(true);
     try {
-      const commentToLog = buildCommentWithContextPrefix(comments, selectedIssue, loggedIssue);
+      const issueForLogging = effectiveLoggedIssue ?? selectedIssue;
+      if (!issueForLogging) {
+        toast.error(t("timeEntry.validationSelectTicket"));
+        return;
+      }
+
+      const commentToLog = buildCommentWithContextPrefix(comments, selectedIssue, issueForLogging);
 
       if (isEdit) {
         await updateTimeEntry(props.session.redmineEntryId!, {
-          issueId: loggedIssue.id,
+          issueId: issueForLogging.id,
           hours,
           activityId: Number(activityId),
           comments: commentToLog,
@@ -616,17 +644,17 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         });
         await persistEntryTimesForCurrentDomain(props.session.redmineEntryId!, startTime, stopTime, {
           issue: selectedIssue,
-          loggedIssue,
+          loggedIssue: issueForLogging,
         });
         toast.success(t("timeEntry.updated"), {
           description: t("timeEntry.loggedDescription", {
             duration,
-            issueId: loggedIssue.id,
+            issueId: issueForLogging.id,
           }),
         });
         props.onSaved({
           issue: selectedIssue,
-          loggedIssue,
+          loggedIssue: issueForLogging,
           hours,
           activityId: Number(activityId),
           comments: commentToLog,
@@ -636,7 +664,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         });
       } else {
         const entryId = await logTimeEntry({
-          issueId: loggedIssue.id,
+          issueId: issueForLogging.id,
           hours,
           activityId: Number(activityId),
           comments: commentToLog,
@@ -644,15 +672,15 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
         });
         await persistEntryTimesForCurrentDomain(entryId, startTime, stopTime, {
           issue: selectedIssue,
-          loggedIssue,
+          loggedIssue: issueForLogging,
         });
         toast.success(isDuplicateIntent ? t("timeEntry.duplicated") : t("timeEntry.logged"), {
           description: t("timeEntry.loggedDescription", {
             duration,
-            issueId: loggedIssue.id,
+            issueId: issueForLogging.id,
           }),
         });
-        props.onSaved(selectedIssue, loggedIssue, entryId, hours, Number(activityId), commentToLog, spentOn, startTime, stopTime);
+        props.onSaved(selectedIssue, issueForLogging, entryId, hours, Number(activityId), commentToLog, spentOn, startTime, stopTime);
       }
     } catch (err) {
       toast.error(isEdit ? t("timeEntry.updateFailed") : t("timeEntry.logFailed"), {
@@ -804,7 +832,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
             )}
           </div>
 
-          {/* Logged ticket */}
+          {allowDifferentLoggedTicket && (
           <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-1">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide font-heading">
@@ -966,6 +994,7 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
               </div>
             )}
           </div>
+          )}
 
           {/* Date */}
           <div className="space-y-2">
@@ -1128,7 +1157,15 @@ export function TimeEntryModal(props: TimeEntryModalProps) {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={isSaving || isDeleting || !activityId || isTicketSearchMode || isLoggedTicketSearchMode || !selectedIssue || !loggedIssue}
+              disabled={
+                isSaving ||
+                isDeleting ||
+                !activityId ||
+                isTicketSearchMode ||
+                (allowDifferentLoggedTicket && isLoggedTicketSearchMode) ||
+                !selectedIssue ||
+                !effectiveLoggedIssue
+              }
               className="bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
             >
               {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}

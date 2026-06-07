@@ -357,6 +357,8 @@ const en = {
     expressModeRequiresDefaultActivity: "Select a default activity to be able to enable Express Mode.",
     prefillLastComment: "Reuse last ticket comment",
     prefillLastCommentHint: "When selecting a ticket, prefill the draft comment with your last logged comment on that ticket",
+    allowDifferentLoggedTicket: "Allow logging on a different ticket",
+    allowDifferentLoggedTicketHint: "Shows the logging-ticket field and allows time entries to be logged on a ticket different from the selected one.",
     searchInTimeComments: "Search in logged time comments",
     searchInTimeCommentsHint: "When enabled, ticket search also matches your time-entry comments (experimental and potentially slower)",
     defaultActivity: "Default Activity",

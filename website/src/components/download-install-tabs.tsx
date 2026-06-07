@@ -16,7 +16,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { releaseUrls } from '@/lib/shared';
+import { gitConfig, releaseUrls } from '@/lib/shared';
 
 type OsTab = 'windows' | 'macos' | 'linux';
 
@@ -30,6 +30,48 @@ interface ReleaseManifest {
   notes?: string;
   pub_date?: string;
   assets?: ManifestPlatform[];
+}
+
+interface GithubReleaseAsset {
+  name?: string;
+  browser_download_url?: string;
+}
+
+interface GithubReleasePayload {
+  tag_name?: string;
+  body?: string;
+  published_at?: string;
+  assets?: GithubReleaseAsset[];
+}
+
+async function fetchLatestRelease(signal: AbortSignal): Promise<ReleaseManifest> {
+  const response = await fetch(
+    `https://api.github.com/repos/${gitConfig.user}/${gitConfig.repo}/releases/latest`,
+    {
+      signal,
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch latest release (HTTP ${response.status})`);
+  }
+
+  const release = (await response.json()) as GithubReleasePayload;
+  return {
+    version: release.tag_name?.replace(/^v/, ''),
+    notes: release.body,
+    pub_date: release.published_at,
+    assets: (release.assets ?? [])
+      .map((asset) => ({
+        name: asset.name?.trim() ?? '',
+        url: asset.browser_download_url?.trim() ?? '',
+      }))
+      .filter((asset) => asset.name.length > 0 && asset.url.length > 0),
+  };
 }
 
 interface PlatformLinks {
@@ -115,24 +157,21 @@ export function DownloadInstallTabs() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch('/api/download-manifest');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as ReleaseManifest;
-        if (!cancelled) {
-          setRelease(data);
-          setError(null);
-        }
+        const data = await fetchLatestRelease(controller.signal);
+        setRelease(data);
+        setError(null);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, []);
 

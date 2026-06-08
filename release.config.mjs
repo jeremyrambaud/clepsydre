@@ -9,7 +9,15 @@ export default {
   ],
   tagFormat: "v${version}",
   plugins: [
-    "@semantic-release/commit-analyzer",
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        releaseRules: [
+          // Promote sync commits from main->beta to patch prereleases on beta.
+          { type: "chore", scope: "sync", release: "patch" },
+        ],
+      },
+    ],
     "@semantic-release/release-notes-generator",
     [
       "@semantic-release/exec",

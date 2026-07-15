@@ -1151,6 +1151,10 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             color: mutedForeground,
             fontSize: "11px",
           },
+          formatter: function (this: any): string {
+            const value = String(this.value ?? "");
+            return value.length > 45 ? `${value.substring(0, 45)}…` : value;
+          },
         },
       },
       yAxis: {
@@ -1170,7 +1174,13 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         },
       },
       tooltip: {
-        enabled: false,
+        useHTML: true,
+        formatter: function (this: any): string {
+          const index = this.point?.index ?? 0;
+          const item = monthlyTaskRanking[index];
+          if (!item) return "";
+          return `<span style="font-size:11px">${item.label}</span><br/><b>${formatMinutesAsHoursLabel(item.minutes)}</b>`;
+        },
       },
       plotOptions: {
         series: {
@@ -1242,6 +1252,10 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
             color: mutedForeground,
             fontSize: "11px",
           },
+          formatter: function (this: any): string {
+            const value = String(this.value ?? "");
+            return value.length > 28 ? `${value.substring(0, 28)}…` : value;
+          },
         },
       },
       yAxis: {
@@ -1261,7 +1275,13 @@ export function AnalyticsView({ onOpenDetails: _onOpenDetails }: AnalyticsViewPr
         },
       },
       tooltip: {
-        enabled: false,
+        useHTML: true,
+        formatter: function (this: any): string {
+          const index = this.point?.index ?? 0;
+          const item = monthlyProjectRanking[index];
+          if (!item) return "";
+          return `<span style="font-size:11px">${item.label}</span><br/><b>${formatMinutesAsHoursLabel(item.minutes)}</b>`;
+        },
       },
       plotOptions: {
         series: {

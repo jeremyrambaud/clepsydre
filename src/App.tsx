@@ -91,6 +91,19 @@ function App() {
 
   useEffect(() => {
     if (!settingsLoaded) return;
+    if (minimizeToTray) return;
+
+    void invoke<boolean>("was_autostarted")
+      .then((autostarted) => {
+        if (autostarted) {
+          void invoke("show_main_window").catch(() => {});
+        }
+      })
+      .catch(() => {});
+  }, [settingsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
     const syncAutostart = async () => {
       try {
         if (launchAtStartup) {

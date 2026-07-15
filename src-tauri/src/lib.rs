@@ -45,6 +45,13 @@ struct GithubReleaseSummaryResponse {
 const MIN_WINDOW_WIDTH: f64 = 390.0;
 const MIN_WINDOW_HEIGHT: f64 = 700.0;
 
+struct AutostartFlag(bool);
+
+#[tauri::command]
+fn was_autostarted(state: tauri::State<AutostartFlag>) -> bool {
+    state.0
+}
+
 #[derive(Clone, Copy)]
 struct TrayI18n {
     show: &'static str,
@@ -477,6 +484,7 @@ async fn install_pending_update(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let db_migrations = migrations::get_migrations();
+    let is_autostarted = std::env::args().any(|arg| arg == "--autostart");
     let idle_monitor_state = Arc::new(Mutex::new(idle::IdleMonitorConfig::default()));
     let minimize_to_tray_state = Arc::new(Mutex::new(true));
     let pending_update_state: Arc<Mutex<Option<Update>>> = Arc::new(Mutex::new(None));
@@ -486,6 +494,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             let _ = integration::show_main_window(app.clone());
         }))
+        .manage(AutostartFlag(is_autostarted))
         .manage(idle_monitor_state.clone())
         .manage(minimize_to_tray_state.clone())
         .manage(pending_update_state.clone())
@@ -527,6 +536,21 @@ pub fn run() {
             }
 
             restore_window_state(&app.handle());
+
+            if is_autostarted {
+                if let Some(window) = app.handle().get_webview_window("main") {
+                    let _ = window.set_skip_taskbar(true);
+                    #[cfg(target_os = "macos")]
+                    {
+                        let _ = app
+                            .handle()
+                            .set_activation_policy(tauri::ActivationPolicy::Accessory);
+                    }
+                }
+            } else if let Some(window) = app.handle().get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
 
             idle::spawn_idle_monitor(app.handle().clone(), idle_monitor_state.clone());
             bridge_server::spawn_bridge_server(app.handle().clone(), timer_state.clone());
@@ -626,7 +650,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
+            Some(vec!["--autostart"]),
         ))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -643,6 +667,7 @@ pub fn run() {
             integration::integration_respond,
             set_tray_timer_label,
             set_minimize_to_tray,
+            was_autostarted,
             get_system_locale,
             check_for_updates,
             install_pending_update,

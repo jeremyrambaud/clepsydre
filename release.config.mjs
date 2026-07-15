@@ -1,6 +1,6 @@
 /** @type {import("semantic-release").GlobalConfig} */
 const isBetaDraftRelease = process.env.SEMANTIC_RELEASE_DRAFT === "true";
-const releaseChannelLabel = process.env.SEMANTIC_RELEASE_CHANNEL_LABEL === "Beta" ? "Beta" : "Stable";
+const releaseChannelLabel = process.env.SEMANTIC_RELEASE_CHANNEL_LABEL === "Beta" ? "Beta" : "";
 
 export default {
   branches: [

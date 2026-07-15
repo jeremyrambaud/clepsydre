@@ -20,6 +20,7 @@ import {
   Loader2,
   Pencil,
   Play,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -587,6 +588,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
   const [toDate, setToDate] = useState(initialMonthRange.to);
   const [datePreset, setDatePreset] = useState<DatePreset>("this-month");
   const [activityFilter, setActivityFilter] = useState("all");
+  const [commentSearch, setCommentSearch] = useState("");
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
@@ -685,10 +687,12 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
 
   const filteredEntries = useMemo(() => {
     const direction = sortDirection === "asc" ? 1 : -1;
+    const commentQuery = commentSearch.trim().toLowerCase();
     return projectFilteredEntries
       .filter((entry) => {
         if (selectedTicketId != null && displayIssueOf(entry).id !== selectedTicketId) return false;
         if (activityFilter !== "all" && entry.activityId !== Number(activityFilter)) return false;
+        if (commentQuery && !(entry.comments ?? "").toLowerCase().includes(commentQuery)) return false;
         return true;
       })
       .sort((a, b) => {
@@ -699,7 +703,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
         if (a.spentOn !== b.spentOn) return (a.spentOn < b.spentOn ? -1 : 1) * direction;
         return (a.stoppedAt ?? "").localeCompare(b.stoppedAt ?? "") * direction;
       });
-  }, [projectFilteredEntries, selectedTicketId, activityFilter, sortColumn, sortDirection]);
+  }, [projectFilteredEntries, selectedTicketId, activityFilter, commentSearch, sortColumn, sortDirection]);
 
   const stats = useMemo(() => {
     const distinctProjects = new Set<number>();
@@ -728,7 +732,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
   // Reset to first page whenever the active filter set changes.
   useEffect(() => {
     setCurrentPage(1);
-  }, [fromDate, toDate, activityFilter, selectedProjectIds, selectedTicketId, pageSize]);
+  }, [fromDate, toDate, activityFilter, commentSearch, selectedProjectIds, selectedTicketId, pageSize]);
 
   const pageEntries = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -740,6 +744,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
     fromDate !== initialMonthRange.from ||
     toDate !== initialMonthRange.to ||
     activityFilter !== "all" ||
+    commentSearch.trim() !== "" ||
     selectedProjectIds.length > 0 ||
     selectedTicketId != null;
 
@@ -748,6 +753,7 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
     setToDate(initialMonthRange.to);
     setDatePreset("this-month");
     setActivityFilter("all");
+    setCommentSearch("");
     setSelectedProjectIds([]);
     setSelectedTicketId(null);
     setCurrentPage(1);
@@ -882,6 +888,29 @@ export function HistoryView({ onStartIssue }: HistoryViewProps) {
               }}
               aria-label={t("history.toDate")}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{t("history.comment")}</p>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                value={commentSearch}
+                onChange={(event) => setCommentSearch(event.target.value)}
+                placeholder={t("history.commentSearchPlaceholder")}
+                className="pl-8 pr-8"
+              />
+              {commentSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCommentSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

@@ -216,6 +216,8 @@ const en = {
       actions: "Actions",
     },
     unknownActivity: "Unknown",
+    comment: "Comment",
+    commentSearchPlaceholder: "Search in comments...",
     noComment: "No comment",
     loading: "Loading entries...",
     empty: "No time entry for the selected filters",

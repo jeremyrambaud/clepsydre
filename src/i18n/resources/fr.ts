@@ -216,6 +216,8 @@ const fr = {
       actions: "Actions",
     },
     unknownActivity: "Inconnue",
+    comment: "Commentaire",
+    commentSearchPlaceholder: "Rechercher dans les commentaires...",
     noComment: "Aucun commentaire",
     loading: "Chargement des saisies...",
     empty: "Aucune saisie pour les filtres sélectionnés",
